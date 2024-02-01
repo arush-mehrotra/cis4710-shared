@@ -28,8 +28,8 @@ module divider_unsigned (
             .o_quotient(temp_quotient[i+1]));
         end endgenerate
 
-    assign o_remainder[31:0] = temp_remainder[32];
-    assign o_quotient[31:0] = temp_dividend[32];
+    assign o_remainder[31:0] = temp_remainder[32][31:0];
+    assign o_quotient[31:0] = temp_quotient[32][31:0];
 
 endmodule
 
