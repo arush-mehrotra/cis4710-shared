@@ -25,6 +25,23 @@ module RegFile (
   logic [`REG_SIZE] regs[NumRegs];
 
   // TODO: your code here
+  assign regs[0] = 32'd0;
+  assign rs1_data = regs[rs1];
+  assign rs2_data = regs[rs2];
+
+  genvar i;
+    generate for (i = 0; i < NumRegs; i++) begin: g_loop
+      always_ff @(posedge clk) begin
+        if (rst) begin
+          regs[i] <= 32'd0;
+        end else begin
+          if (we && rd == i && rd != 0) begin
+            regs[i] <= rd_data;
+          end
+        end
+      end
+    end endgenerate
+
 
 endmodule
 
