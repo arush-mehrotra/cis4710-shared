@@ -224,9 +224,12 @@ module DatapathSingleCycle (
       .rs2_data(regfile_rs2_data)
   );
 
-  // cla cla_addi(.a(regfile_rs1_data), .b(imm_i_sext), .cin(1'b0), .sum(regfile_rd_data));
-  // cla cla_add(.a(regfile_rs1_data), .b(regfile_rs2_data), .cin(1'b0), .sum(regfile_rd_data));
-  // cla cla_sub(.a(regfile_rs1_data), .b(~(regfile_rs2_data)), .cin(1'b1), .sum(regfile_rd_data));
+  // temp wire for sum
+  logic[31:0] sum1, sum2, sum3;
+
+  cla cla_addi(.a(regfile_rs1_data), .b(imm_i_sext), .cin(1'b0), .sum(sum1));
+  cla cla_add(.a(regfile_rs1_data), .b(regfile_rs2_data), .cin(1'b0), .sum(sum2));
+  cla cla_sub(.a(regfile_rs1_data), .b(~(regfile_rs2_data)), .cin(1'b1), .sum(sum3));
 
 
   always_comb begin
@@ -251,8 +254,7 @@ module DatapathSingleCycle (
           3'b000: begin
             regfile_we = 1'b1;
             // use CLA
-            // cla cla_addi(.a(regfile_rs1_data), .b(imm_i_sext), .cin(1'b0), .sum(regfile_rd_data));
-            regfile_rd_data = regfile_rs1_data + imm_i_sext;
+            regfile_rd_data = sum1;
           end
           // slti
           3'b010: begin
@@ -308,13 +310,11 @@ module DatapathSingleCycle (
             if (insn_from_imem[31:25] == 7'd0) begin
               regfile_we = 1'b1;
               // use CLA
-              // cla cla_add(.a(regfile_rs1_data), .b(regfile_rs2_data), .cin(1'b0), .sum(regfile_rd_data));
-              regfile_rd_data = regfile_rs1_data + regfile_rs2_data;
+              regfile_rd_data = sum2;
             end else if (insn_from_imem[31:25] == 7'b0100000) begin
               regfile_we = 1'b1;
               // use CLA
-              // cla cla_sub(.a(regfile_rs1_data), .b(~(regfile_rs2_data)), .cin(1'b1), .sum(regfile_rd_data));
-              regfile_rd_data = regfile_rs1_data - regfile_rs2_data;
+              regfile_rd_data = sum3;
             end
           end
           // sll
