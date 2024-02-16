@@ -259,7 +259,7 @@ module DatapathSingleCycle (
           // slti
           3'b010: begin
             regfile_we = 1'b1;
-            regfile_rd_data = (regfile_rs1_data < $signed(imm_i_sext)) ? 32'd1 : 32'd0;
+            regfile_rd_data = ($signed(regfile_rs1_data) < $signed(imm_i_sext)) ? 32'd1 : 32'd0;
           end
           // sltiu
           3'b011: begin
@@ -295,7 +295,7 @@ module DatapathSingleCycle (
               regfile_rd_data = regfile_rs1_data >> imm_shamt;
             end else if (insn_from_imem[31:25] == 7'b0100000) begin
               regfile_we = 1'b1;
-              regfile_rd_data = regfile_rs1_data >>> imm_shamt;
+              regfile_rd_data = $signed(regfile_rs1_data) >>> imm_shamt;
             end
           end
           default: begin
@@ -321,14 +321,14 @@ module DatapathSingleCycle (
           3'b001: begin
             if (insn_from_imem[31:25] == 7'd0) begin
               regfile_we = 1'b1;
-              regfile_rd_data = regfile_rs1_data << (regfile_rs2_data & 32'd31);
+              regfile_rd_data = regfile_rs1_data << (regfile_rs2_data[4:0]);
             end
           end
           // slt
           3'b010: begin
             if (insn_from_imem[31:25] == 7'd0) begin
               regfile_we = 1'b1;
-              regfile_rd_data = (regfile_rs1_data < $signed(regfile_rs2_data)) ? 32'd1 : 32'd0;
+              regfile_rd_data = ($signed(regfile_rs1_data) < $signed(regfile_rs2_data)) ? 32'd1 : 32'd0;
             end
           end
           // sltu
@@ -349,10 +349,10 @@ module DatapathSingleCycle (
           3'b101: begin
             if (insn_from_imem[31:25] == 7'd0) begin
               regfile_we = 1'b1;
-              regfile_rd_data = regfile_rs1_data >> (regfile_rs2_data & 32'd31);
+              regfile_rd_data = regfile_rs1_data >> (regfile_rs2_data[4:0]);
             end else if (insn_from_imem[31:25] == 7'b0100000) begin
               regfile_we = 1'b1;
-              regfile_rd_data = regfile_rs1_data >>> (regfile_rs2_data & 32'd31);
+              regfile_rd_data = $signed(regfile_rs1_data) >>> (regfile_rs2_data[4:0]);
             end
           end
           // or
@@ -390,13 +390,13 @@ module DatapathSingleCycle (
           end
           // blt
           3'b100: begin
-            if (regfile_rs1_data < $signed(regfile_rs2_data)) begin
+            if ($signed(regfile_rs1_data) < $signed(regfile_rs2_data)) begin
               pcNext = pcCurrent + imm_b_sext;
             end
           end
           // bge
           3'b101: begin
-            if (regfile_rs1_data >= $signed(regfile_rs2_data)) begin
+            if ($signed(regfile_rs1_data) >= $signed(regfile_rs2_data)) begin
               pcNext = pcCurrent + imm_b_sext;
             end
           end
