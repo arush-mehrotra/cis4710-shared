@@ -224,6 +224,7 @@ module DatapathSingleCycle (
       .rs2_data(regfile_rs2_data)
   );
 
+
   always_comb begin
     illegal_insn = 1'b0;
     regfile_we = 1'b0;
@@ -231,7 +232,177 @@ module DatapathSingleCycle (
       OpLui: begin
         // TODO: start here by implementing lui
         regfile_we = 1'b1;
-        regfile_rd_data = {insn_from_imem[31:12], 12'd0};
+        regfile_rd_data = {insn_from_imem[31:12], 12'b0};
+      end
+      OpAuipc: begin
+        regfile_we = 1'b1;
+        regfile_rd_data = pcCurrent + {insn_from_imem[31:12], 12'b0};
+      end
+      OpRegImm: begin
+        case (insn_from_imem[14:12])
+          // addi
+          3'b000: begin
+            regfile_we = 1'b1;
+            // use CLA
+            cla cla_addi(.a(regfile_rs1_data), .b(imm_i_sext), .cin(1'b0), .sum(regfile_rd_data));
+          end
+          // slti
+          3'b010: begin
+            regfile_we = 1'b1;
+            regfile_rd_data = (regfile_rs1_data < $signed(imm_i_sext)) ? 32'd1 : 32'd0;
+          end
+          // sltiu
+          3'b011: begin
+            regfile_we = 1'b1;
+            regfile_rd_data = (regfile_rs1_data < imm_i_sext) ? 32'd1 : 32'd0;
+          end
+          // xori
+          3'b100: begin
+            regfile_we = 1'b1;
+            regfile_rd_data = regfile_rs1_data ^ imm_i_sext;
+          end
+          // ori
+          3'b110: begin
+            regfile_we = 1'b1;
+            regfile_rd_data = regfile_rs1_data | imm_i_sext;
+          end
+          // andi
+          3'b111: begin
+            regfile_we = 1'b1;
+            regfile_rd_data = regfile_rs1_data & imm_i_sext;
+          end
+          // slli
+          3'b001: begin
+            if (insn_from_imem[31:25] == 7'd0) begin
+              regfile_we = 1'b1;
+              regfile_rd_data = regfile_rs1_data << imm_shamt;
+            end
+          end
+          // srli & srai
+          3'b101: begin
+            if (insn_from_imem[31:25] == 7'd0) begin
+              regfile_we = 1'b1;
+              regfile_rd_data = regfile_rs1_data >> imm_shamt;
+            end else if (insn_from_imem[31:25] == 7'b0100000) begin
+              regfile_we = 1'b1;
+              regfile_rd_data = regfile_rs1_data >>> imm_shamt;
+            end
+          end
+        endcase
+      end
+      OpRegReg: begin
+        case (insn_from_imem[14:12])
+          // add & sub
+          3'b000: begin
+            if (insn_from_imem[31:25] == 7'd0) begin
+              regfile_we = 1'b1;
+              // use CLA
+              cla cla_add(.a(regfile_rs1_data), .b(regfile_rs2_data), .cin(1'b0), .sum(regfile_rd_data));
+            end else if (insn_from_imem[31:25] == 7'b0100000) begin
+              regfile_we = 1'b1;
+              // use CLA
+              cla cla_sub(.a(regfile_rs1_data), .b(~(regfile_rs2_data)), .cin(1'b1), .sum(regfile_rd_data));
+              regfile_rd_data = regfile_rs1_data - regfile_rs2_data;
+            end
+          end
+          // sll
+          3'b001: begin
+            if (insn_from_imem[31:25] == 7'd0) begin
+              regfile_we = 1'b1;
+              regfile_rd_data = regfile_rs1_data << (regfile_rs2_data & 5'd31);
+            end
+          end
+          // slt
+          3'b010: begin
+            if (insn_from_imem[31:25] == 7'd0) begin
+              regfile_we = 1'b1;
+              regfile_rd_data = (regfile_rs1_data < $signed(regfile_rs2_data)) ? 32'd1 : 32'd0;
+            end
+          end
+          // sltu
+          3'b011: begin
+            if (insn_from_imem[31:25] == 7'd0) begin
+              regfile_we = 1'b1;
+              regfile_rd_data = (regfile_rs1_data < regfile_rs2_data) ? 32'd1 : 32'd0;
+            end
+          end
+          // xor
+          3'b100: begin
+            if (insn_from_imem[31:25] == 7'd0) begin
+              regfile_we = 1'b1;
+              regfile_rd_data = regfile_rs1_data ^ regfile_rs2_data;
+            end
+          end
+          // srl & sra
+          3'b101: begin
+            if (insn_from_imem[31:25] == 7'd0) begin
+              regfile_we = 1'b1;
+              regfile_rd_data = regfile_rs1_data >> (regfile_rs2_data & 5'd31);
+            end else if (insn_from_imem[31:25] == 7'b0100000) begin
+              regfile_we = 1'b1;
+              regfile_rd_data = regfile_rs1_data >>> (regfile_rs2_data & 5'd31);
+            end
+          end
+          // or
+          3'b110: begin
+            if (insn_from_imem[31:25] == 7'd0) begin
+              regfile_we = 1'b1;
+              regfile_rd_data = regfile_rs1_data | regfile_rs2_data;
+            end
+          end
+          // and
+          3'b111: begin
+            if (insn_from_imem[31:25] == 7'd0) begin
+              regfile_we = 1'b1;
+              regfile_rd_data = regfile_rs1_data & regfile_rs2_data;
+            end
+          end
+        endcase
+      end
+      OpBranch: begin
+        case (insn_from_imem[14:12])
+          // beq
+          3'b000: begin
+            if (regfile_rs1_data == regfile_rs2_data) begin
+              pcNext = pcCurrent + imm_b_sext;
+            end
+          end
+          // bne
+          3'b001: begin
+            if (regfile_rs1_data != regfile_rs2_data) begin
+              pcNext = pcCurrent + imm_b_sext;
+            end
+          end
+          // blt
+          3'b100: begin
+            if (regfile_rs1_data < $signed(regfile_rs2_data)) begin
+              pcNext = pcCurrent + imm_b_sext;
+            end
+          end
+          // bge
+          3'b101: begin
+            if (regfile_rs1_data >= $signed(regfile_rs2_data)) begin
+              pcNext = pcCurrent + imm_b_sext;
+            end
+          end
+          // bltu
+          3'b110: begin
+            if (regfile_rs1_data < regfile_rs2_data) begin
+              pcNext = pcCurrent + imm_b_sext;
+            end
+          end
+          // bgeu
+          3'b111: begin
+            if (regfile_rs1_data >= regfile_rs2_data) begin
+              pcNext = pcCurrent + imm_b_sext;
+            end
+          end
+        endcase
+        OpEnviron: begin
+          if (insn_from_imem[31:7] == 25'd0) begin
+            halt = 1;
+          end
+        end
       end
       default: begin
         illegal_insn = 1'b1;
