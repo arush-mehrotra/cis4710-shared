@@ -422,6 +422,11 @@ module DatapathSingleCycle (
           halt = 1;
         end
       end
+      OpJal: begin
+        regfile_we = 1'b1;
+        regfile_rd_data = pcCurrent + 4;
+        pcNext = pcCurrent + imm_j_sext;
+      end
       default: begin
         illegal_insn = 1'b1;
       end
