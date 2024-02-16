@@ -224,10 +224,17 @@ module DatapathSingleCycle (
       .rs2_data(regfile_rs2_data)
   );
 
+  // cla cla_addi(.a(regfile_rs1_data), .b(imm_i_sext), .cin(1'b0), .sum(regfile_rd_data));
+  // cla cla_add(.a(regfile_rs1_data), .b(regfile_rs2_data), .cin(1'b0), .sum(regfile_rd_data));
+  // cla cla_sub(.a(regfile_rs1_data), .b(~(regfile_rs2_data)), .cin(1'b1), .sum(regfile_rd_data));
+
 
   always_comb begin
     illegal_insn = 1'b0;
     regfile_we = 1'b0;
+    regfile_rd_data = 32'd0;
+    halt = 0;
+    pcNext = pcCurrent + 4;
     case (insn_opcode)
       OpLui: begin
         // TODO: start here by implementing lui
@@ -244,7 +251,8 @@ module DatapathSingleCycle (
           3'b000: begin
             regfile_we = 1'b1;
             // use CLA
-            cla cla_addi(.a(regfile_rs1_data), .b(imm_i_sext), .cin(1'b0), .sum(regfile_rd_data));
+            // cla cla_addi(.a(regfile_rs1_data), .b(imm_i_sext), .cin(1'b0), .sum(regfile_rd_data));
+            regfile_rd_data = regfile_rs1_data + imm_i_sext;
           end
           // slti
           3'b010: begin
@@ -288,6 +296,9 @@ module DatapathSingleCycle (
               regfile_rd_data = regfile_rs1_data >>> imm_shamt;
             end
           end
+          default: begin
+            illegal_insn = 1'b1;
+          end
         endcase
       end
       OpRegReg: begin
@@ -297,11 +308,12 @@ module DatapathSingleCycle (
             if (insn_from_imem[31:25] == 7'd0) begin
               regfile_we = 1'b1;
               // use CLA
-              cla cla_add(.a(regfile_rs1_data), .b(regfile_rs2_data), .cin(1'b0), .sum(regfile_rd_data));
+              // cla cla_add(.a(regfile_rs1_data), .b(regfile_rs2_data), .cin(1'b0), .sum(regfile_rd_data));
+              regfile_rd_data = regfile_rs1_data + regfile_rs2_data;
             end else if (insn_from_imem[31:25] == 7'b0100000) begin
               regfile_we = 1'b1;
               // use CLA
-              cla cla_sub(.a(regfile_rs1_data), .b(~(regfile_rs2_data)), .cin(1'b1), .sum(regfile_rd_data));
+              // cla cla_sub(.a(regfile_rs1_data), .b(~(regfile_rs2_data)), .cin(1'b1), .sum(regfile_rd_data));
               regfile_rd_data = regfile_rs1_data - regfile_rs2_data;
             end
           end
@@ -309,7 +321,7 @@ module DatapathSingleCycle (
           3'b001: begin
             if (insn_from_imem[31:25] == 7'd0) begin
               regfile_we = 1'b1;
-              regfile_rd_data = regfile_rs1_data << (regfile_rs2_data & 5'd31);
+              regfile_rd_data = regfile_rs1_data << (regfile_rs2_data & 32'd31);
             end
           end
           // slt
@@ -337,10 +349,10 @@ module DatapathSingleCycle (
           3'b101: begin
             if (insn_from_imem[31:25] == 7'd0) begin
               regfile_we = 1'b1;
-              regfile_rd_data = regfile_rs1_data >> (regfile_rs2_data & 5'd31);
+              regfile_rd_data = regfile_rs1_data >> (regfile_rs2_data & 32'd31);
             end else if (insn_from_imem[31:25] == 7'b0100000) begin
               regfile_we = 1'b1;
-              regfile_rd_data = regfile_rs1_data >>> (regfile_rs2_data & 5'd31);
+              regfile_rd_data = regfile_rs1_data >>> (regfile_rs2_data & 32'd31);
             end
           end
           // or
@@ -356,6 +368,9 @@ module DatapathSingleCycle (
               regfile_we = 1'b1;
               regfile_rd_data = regfile_rs1_data & regfile_rs2_data;
             end
+          end
+          default: begin
+            illegal_insn = 1'b1;
           end
         endcase
       end
@@ -397,11 +412,14 @@ module DatapathSingleCycle (
               pcNext = pcCurrent + imm_b_sext;
             end
           end
-        endcase
-        OpEnviron: begin
-          if (insn_from_imem[31:7] == 25'd0) begin
-            halt = 1;
+          default: begin
+            illegal_insn = 1'b1;
           end
+        endcase
+      end
+      OpEnviron: begin
+        if (insn_from_imem[31:7] == 25'd0) begin
+          halt = 1;
         end
       end
       default: begin
