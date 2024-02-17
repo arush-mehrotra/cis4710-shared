@@ -235,10 +235,10 @@ module DatapathSingleCycle (
   cla cla_add(.a(regfile_rs1_data), .b(regfile_rs2_data), .cin(1'b0), .sum(sum2));
   cla cla_sub(.a(regfile_rs1_data), .b(~(regfile_rs2_data)), .cin(1'b1), .sum(sum3));
   
-  divider_unsigned div(.a(regfile_rs1_data), .b(regfile_rs2_data), .quotient(quotient1), .remainder(remainder1));
-  divider_unsigned divu(.a(regfile_rs1_data), .b(regfile_rs2_data), .quotient(quotient2), .remainder(remainder2));
-  divider_unsigned rem(.a(regfile_rs1_data), .b(regfile_rs2_data), .quotient(quotient3), .remainder(remainder3));
-  divider_unsigned remu(.a(regfile_rs1_data), .b(regfile_rs2_data), .quotient(quotient4), .remainder(remainder4));
+  divider_unsigned div(.i_dividend(regfile_rs1_data), .i_divisor(regfile_rs2_data), .o_quotient(quotient1), .o_remainder(remainder1));
+  divider_unsigned divu(.i_dividend(regfile_rs1_data), .i_divisor(regfile_rs2_data), .o_quotient(quotient2), .o_remainder(remainder2));
+  divider_unsigned rem(.i_dividend(regfile_rs1_data), .i_divisor(regfile_rs2_data), .o_quotient(quotient3), .o_remainder(remainder3));
+  divider_unsigned remu(.i_dividend(regfile_rs1_data), .i_divisor(regfile_rs2_data), .o_quotient(quotient4), .o_remainder(remainder4));
 
 
   always_comb begin
@@ -486,7 +486,7 @@ module DatapathSingleCycle (
       OpJalr: begin
         regfile_we = 1'b1;
         regfile_rd_data = pcCurrent + 4;
-        pcNext = (regfile_rs1_data + immi_sext) & ~(32'd1);
+        pcNext = (regfile_rs1_data + imm_i_sext) & ~(32'd1);
       end
       OpLoad: begin
         case (insn_from_imem[14:12])
@@ -550,7 +550,8 @@ module DatapathSingleCycle (
           end
         endcase
       end
-
+      OpMiscMem: begin
+      end
       default: begin
         illegal_insn = 1'b1;
       end
