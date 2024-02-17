@@ -229,15 +229,20 @@ module DatapathSingleCycle (
   logic[63:0] product;
   logic[31:0] remainder1, remainder2, remainder3, remainder4;
   logic[31:0] quotient1, quotient2, quotient3, quotient4;
+  logic[31:0] unsignedrs1, unsignedrs2;
 
 
   cla cla_addi(.a(regfile_rs1_data), .b(imm_i_sext), .cin(1'b0), .sum(sum1));
   cla cla_add(.a(regfile_rs1_data), .b(regfile_rs2_data), .cin(1'b0), .sum(sum2));
   cla cla_sub(.a(regfile_rs1_data), .b(~(regfile_rs2_data)), .cin(1'b1), .sum(sum3));
+
+  assign unsignedrs1 = regfile_rs1_data[31] ? ~regfile_rs1_data + 1: regfile_rs1_data;
+  assign unsignedrs2 = regfile_rs2_data[31] ? ~regfile_rs2_data + 1: regfile_rs2_data;
+
   
-  divider_unsigned div(.i_dividend(regfile_rs1_data), .i_divisor(regfile_rs2_data), .o_quotient(quotient1), .o_remainder(remainder1));
+  divider_unsigned div(.i_dividend(unsignedrs1), .i_divisor(unsignedrs2), .o_quotient(quotient1), .o_remainder(remainder1));
   divider_unsigned divu(.i_dividend(regfile_rs1_data), .i_divisor(regfile_rs2_data), .o_quotient(quotient2), .o_remainder(remainder2));
-  divider_unsigned rem(.i_dividend(regfile_rs1_data), .i_divisor(regfile_rs2_data), .o_quotient(quotient3), .o_remainder(remainder3));
+  divider_unsigned rem(.i_dividend(unsignedrs1), .i_divisor(unsignedrs2), .o_quotient(quotient3), .o_remainder(remainder3));
   divider_unsigned remu(.i_dividend(regfile_rs1_data), .i_divisor(regfile_rs2_data), .o_quotient(quotient4), .o_remainder(remainder4));
 
 
@@ -379,9 +384,17 @@ module DatapathSingleCycle (
             end else if (insn_from_imem[31:25] == 7'd1) begin
               regfile_we = 1'b1;
               if (regfile_rs1_data[31] != regfile_rs2_data[31]) begin
-                regfile_rd_data = -quotient1;
+                regfile_rd_data = ~(quotient1) + 1;
               end else begin
-                regfile_rd_data = quotient1;
+                if (quotient1 == 32'b10000000000000000000000000000000) begin
+                  if (regfile_rs2_data == -1) begin
+                    regfile_rd_data = 0;
+                  end else begin
+                    regfile_rd_data = quotient1;
+                  end
+                end else begin
+                  regfile_rd_data = quotient1;
+                end
               end
             end
           end
@@ -493,31 +506,41 @@ module DatapathSingleCycle (
           // lb
           3'b000: begin
             regfile_we = 1'b1;
-            addr_to_dmem = regfile_rs1_data + imm_i_sext;
+            // addr_to_dmem = regfile_rs1_data + imm_i_sext;
+            addr_to_dmem = ((regfile_rs1_data + imm_i_sext) << 2);
+            // addr_to_dmem = ((regfile_rs1_data + imm_i_sext) & ~(32'd3));
             regfile_rd_data = {{24{load_data_from_dmem[7]}}, load_data_from_dmem[7:0]};
           end
           // lh
           3'b001: begin
             regfile_we = 1'b1;
-            addr_to_dmem = regfile_rs1_data + imm_i_sext;
+            // addr_to_dmem = regfile_rs1_data + imm_i_sext;
+            addr_to_dmem = ((regfile_rs1_data + imm_i_sext) << 2);
+            // addr_to_dmem = ((regfile_rs1_data + imm_i_sext) & ~(32'd3));
             regfile_rd_data = {{16{load_data_from_dmem[15]}}, load_data_from_dmem[15:0]};
           end
           // lw
           3'b010: begin
             regfile_we = 1'b1;
-            addr_to_dmem = regfile_rs1_data + imm_i_sext;
+            // addr_to_dmem = regfile_rs1_data + imm_i_sext;
+            addr_to_dmem = ((regfile_rs1_data + imm_i_sext) << 2);
+            // addr_to_dmem = ((regfile_rs1_data + imm_i_sext) & ~(32'd3));
             regfile_rd_data = load_data_from_dmem;
           end
           // lbu
           3'b100: begin
             regfile_we = 1'b1;
-            addr_to_dmem = regfile_rs1_data + imm_i_sext;
+            // addr_to_dmem = regfile_rs1_data + imm_i_sext;
+            addr_to_dmem = ((regfile_rs1_data + imm_i_sext) << 2);
+            // addr_to_dmem = ((regfile_rs1_data + imm_i_sext) & ~(32'd3));
             regfile_rd_data = {{24{1'b0}}, load_data_from_dmem[7:0]};
           end
           // lhu
           3'b101: begin
             regfile_we = 1'b1;
-            addr_to_dmem = regfile_rs1_data + imm_i_sext;
+            // addr_to_dmem = regfile_rs1_data + imm_i_sext;
+            addr_to_dmem = ((regfile_rs1_data + imm_i_sext) << 2);
+            // addr_to_dmem = ((regfile_rs1_data + imm_i_sext) & ~(32'd3));
             regfile_rd_data = {{16{1'b0}}, load_data_from_dmem[15:0]};
           end
           default: begin
@@ -529,19 +552,25 @@ module DatapathSingleCycle (
         case (insn_from_imem[14:12])
           // sb
           3'b000: begin
-            addr_to_dmem = regfile_rs1_data + imm_s_sext;
+            // addr_to_dmem = regfile_rs1_data + imm_s_sext;
+            addr_to_dmem = ((regfile_rs1_data + imm_s_sext) << 2);
+            // addr_to_dmem = ((regfile_rs1_data + imm_i_sext) & ~(32'd3));
             store_data_to_dmem = {{24{regfile_rs2_data[7]}}, regfile_rs2_data[7:0]};
             store_we_to_dmem = 4'b0001;
           end
           // sh
           3'b001: begin
-            addr_to_dmem = regfile_rs1_data + imm_s_sext;
+            // addr_to_dmem = regfile_rs1_data + imm_s_sext;
+            addr_to_dmem = ((regfile_rs1_data + imm_s_sext) << 2);
+            // addr_to_dmem = ((regfile_rs1_data + imm_i_sext) & ~(32'd3));
             store_data_to_dmem = {{16{regfile_rs2_data[15]}}, regfile_rs2_data[15:0]};
             store_we_to_dmem = 4'b0011;
           end
           // sw
           3'b010: begin
-            addr_to_dmem = regfile_rs1_data + imm_s_sext;
+            // addr_to_dmem = regfile_rs1_data + imm_s_sext;
+            addr_to_dmem = ((regfile_rs1_data + imm_s_sext) << 2);
+            // addr_to_dmem = ((regfile_rs1_data + imm_i_sext) & ~(32'd3));
             store_data_to_dmem = regfile_rs2_data;
             store_we_to_dmem = 4'b1111;
           end
