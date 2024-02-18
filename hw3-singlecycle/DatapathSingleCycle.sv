@@ -536,7 +536,7 @@ module DatapathSingleCycle (
           // lb
           3'b000: begin
             regfile_we = 1'b1;
-            assign addr_to_dmem = ((regfile_rs1_data + imm_i_sext) & ~32'd3);
+            addr_to_dmem = ((regfile_rs1_data + imm_i_sext) & ~32'd3);
             if (tempload[1:0] == 2'b00) begin
               regfile_rd_data = ({{24{load_data_from_dmem[7]}}, load_data_from_dmem[7:0]});
             end else if (tempload[1:0] == 2'b01) begin
