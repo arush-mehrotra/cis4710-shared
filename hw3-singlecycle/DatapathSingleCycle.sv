@@ -230,6 +230,11 @@ module DatapathSingleCycle (
   logic[31:0] remainder1, remainder2, remainder3, remainder4;
   logic[31:0] quotient1, quotient2, quotient3, quotient4;
   logic[31:0] unsignedrs1, unsignedrs2;
+  logic[31:0] tempload, tempstore;
+
+  assign tempload = regfile_rs1_data + imm_i_sext;
+  assign tempstore = regfile_rs1_data + imm_s_sext;
+  
 
 
   cla cla_addi(.a(regfile_rs1_data), .b(imm_i_sext), .cin(1'b0), .sum(sum1));
@@ -383,19 +388,25 @@ module DatapathSingleCycle (
             // div
             end else if (insn_from_imem[31:25] == 7'd1) begin
               regfile_we = 1'b1;
-              if (regfile_rs1_data[31] != regfile_rs2_data[31]) begin
-                regfile_rd_data = ~(quotient1) + 1;
+
+              if (regfile_rs2_data == 0) begin
+                regfile_rd_data = ~(32'd0);
               end else begin
-                if (quotient1 == 32'b10000000000000000000000000000000) begin
-                  if (regfile_rs2_data == -1) begin
-                    regfile_rd_data = 0;
+                if (regfile_rs1_data[31] != regfile_rs2_data[31]) begin
+                  regfile_rd_data = ~(quotient1) + 1;
+                end else begin
+                  if (regfile_rs1_data == 32'b10000000000000000000000000000000) begin
+                    if (regfile_rs2_data == ~(32'd0)) begin
+                      regfile_rd_data = regfile_rs1_data;
+                    end else begin
+                      regfile_rd_data = quotient1;
+                    end
                   end else begin
                     regfile_rd_data = quotient1;
                   end
-                end else begin
-                  regfile_rd_data = quotient1;
                 end
               end
+              
             end
           end
           // srl & sra
@@ -409,7 +420,11 @@ module DatapathSingleCycle (
             // divu
             end else if (insn_from_imem[31:25] == 7'd1) begin
               regfile_we = 1'b1;
-              regfile_rd_data = quotient2;
+              if (regfile_rs2_data == 0) begin
+                regfile_rd_data = ~(32'd0);
+              end else begin
+                regfile_rd_data = quotient2;
+              end
             end
           end
           // or
@@ -420,11 +435,30 @@ module DatapathSingleCycle (
             // rem
             end else if (insn_from_imem[31:25] == 7'd1) begin
               regfile_we = 1'b1;
-              if (regfile_rs1_data[31] != regfile_rs2_data[31]) begin
-                regfile_rd_data = -remainder3;
+
+              if (regfile_rs2_data == 0) begin
+                regfile_rd_data = regfile_rs1_data;
               end else begin
-                regfile_rd_data = remainder3;
+                if (regfile_rs1_data[31] == 0 & regfile_rs2_data[31] == 0) begin
+                  regfile_rd_data = remainder3;
+                end else if (regfile_rs1_data[31] == 1 & regfile_rs2_data[31] == 0) begin
+                  regfile_rd_data = ~(remainder3) + 1;
+                end else if (regfile_rs1_data[31] == 0 & regfile_rs2_data[31] == 1) begin
+                  regfile_rd_data = remainder3;
+                end else begin
+                  if (regfile_rs1_data == 32'b10000000000000000000000000000000) begin
+                    if (regfile_rs2_data == ~(32'd0)) begin
+                      regfile_rd_data = 0;
+                    end else begin
+                      regfile_rd_data = ~(remainder3) + 1;
+                    end
+                  end else begin
+                    regfile_rd_data = ~(remainder3) + 1;
+                  end
+                end
               end
+
+              
             end
           end
           // and
@@ -435,7 +469,11 @@ module DatapathSingleCycle (
             // remu
             end else if (insn_from_imem[31:25] == 7'd1) begin
               regfile_we = 1'b1;
-              regfile_rd_data = remainder4;
+              if (regfile_rs2_data == 0) begin
+                regfile_rd_data = regfile_rs1_data;
+              end else begin
+                regfile_rd_data = remainder4;
+              end
             end
           end
           default: begin
@@ -506,42 +544,62 @@ module DatapathSingleCycle (
           // lb
           3'b000: begin
             regfile_we = 1'b1;
-            // addr_to_dmem = regfile_rs1_data + imm_i_sext;
-            addr_to_dmem = ((regfile_rs1_data + imm_i_sext) << 2);
-            // addr_to_dmem = ((regfile_rs1_data + imm_i_sext) & ~(32'd3));
-            regfile_rd_data = {{24{load_data_from_dmem[7]}}, load_data_from_dmem[7:0]};
+            addr_to_dmem = ((regfile_rs1_data + imm_i_sext) & ~32'd3);
+            if (tempload[1:0] == 2'b00) begin
+              regfile_rd_data = ({{24{load_data_from_dmem[7]}}, load_data_from_dmem[7:0]});
+            end else if (tempload[1:0] == 2'b01) begin
+              regfile_rd_data = ({{24{load_data_from_dmem[15]}}, load_data_from_dmem[15:8]});
+            end else if (tempload[1:0] == 2'b10) begin
+              regfile_rd_data = ({{24{load_data_from_dmem[23]}}, load_data_from_dmem[23:16]});
+            end else begin
+              regfile_rd_data = ({{24{load_data_from_dmem[31]}}, load_data_from_dmem[31:24]});
+            end
           end
           // lh
           3'b001: begin
             regfile_we = 1'b1;
-            // addr_to_dmem = regfile_rs1_data + imm_i_sext;
-            addr_to_dmem = ((regfile_rs1_data + imm_i_sext) << 2);
-            // addr_to_dmem = ((regfile_rs1_data + imm_i_sext) & ~(32'd3));
-            regfile_rd_data = {{16{load_data_from_dmem[15]}}, load_data_from_dmem[15:0]};
+            if (tempload[0] == 1'b0) begin
+              addr_to_dmem = ((regfile_rs1_data + imm_i_sext) & ~32'd3);
+              if (tempload[1] == 1'b1) begin
+                regfile_rd_data = {{16{load_data_from_dmem[31]}}, load_data_from_dmem[31:16]};
+              end else begin
+                regfile_rd_data = {{16{load_data_from_dmem[15]}}, load_data_from_dmem[15:0]};
+              end
+            end
           end
           // lw
           3'b010: begin
             regfile_we = 1'b1;
-            // addr_to_dmem = regfile_rs1_data + imm_i_sext;
-            addr_to_dmem = ((regfile_rs1_data + imm_i_sext) << 2);
-            // addr_to_dmem = ((regfile_rs1_data + imm_i_sext) & ~(32'd3));
-            regfile_rd_data = load_data_from_dmem;
+            if (tempload[1:0] == 2'b00) begin
+              addr_to_dmem = regfile_rs1_data + imm_i_sext;
+              regfile_rd_data = load_data_from_dmem;
+            end           
           end
           // lbu
           3'b100: begin
             regfile_we = 1'b1;
-            // addr_to_dmem = regfile_rs1_data + imm_i_sext;
-            addr_to_dmem = ((regfile_rs1_data + imm_i_sext) << 2);
-            // addr_to_dmem = ((regfile_rs1_data + imm_i_sext) & ~(32'd3));
-            regfile_rd_data = {{24{1'b0}}, load_data_from_dmem[7:0]};
+            addr_to_dmem = ((regfile_rs1_data + imm_i_sext) & ~32'd3);
+            if (tempload[1:0] == 2'b00) begin
+              regfile_rd_data = ({{24{1'b0}}, load_data_from_dmem[7:0]});
+            end else if (tempload[1:0] == 2'b01) begin
+              regfile_rd_data = ({{24{1'b0}}, load_data_from_dmem[15:8]});
+            end else if (tempload[1:0] == 2'b10) begin
+              regfile_rd_data = ({{24{1'b0}}, load_data_from_dmem[23:16]});
+            end else begin
+              regfile_rd_data = ({{24{1'b0}}, load_data_from_dmem[31:24]});
+            end
           end
           // lhu
           3'b101: begin
             regfile_we = 1'b1;
-            // addr_to_dmem = regfile_rs1_data + imm_i_sext;
-            addr_to_dmem = ((regfile_rs1_data + imm_i_sext) << 2);
-            // addr_to_dmem = ((regfile_rs1_data + imm_i_sext) & ~(32'd3));
-            regfile_rd_data = {{16{1'b0}}, load_data_from_dmem[15:0]};
+            if (tempload[0] == 1'b0) begin
+              addr_to_dmem = ((regfile_rs1_data + imm_i_sext) & ~32'd3);
+              if (tempload[1] == 1'b1) begin
+                regfile_rd_data = {{16{1'b0}}, load_data_from_dmem[31:16]};
+              end else begin
+                regfile_rd_data = {{16{1'b0}}, load_data_from_dmem[15:0]};
+              end
+            end
           end
           default: begin
             illegal_insn = 1'b1;
@@ -552,27 +610,41 @@ module DatapathSingleCycle (
         case (insn_from_imem[14:12])
           // sb
           3'b000: begin
-            // addr_to_dmem = regfile_rs1_data + imm_s_sext;
-            addr_to_dmem = ((regfile_rs1_data + imm_s_sext) << 2);
-            // addr_to_dmem = ((regfile_rs1_data + imm_i_sext) & ~(32'd3));
-            store_data_to_dmem = {{24{regfile_rs2_data[7]}}, regfile_rs2_data[7:0]};
-            store_we_to_dmem = 4'b0001;
+            addr_to_dmem = ((regfile_rs1_data + imm_s_sext) & ~32'd3);
+            if (tempstore[1:0] == 2'b00) begin
+              store_data_to_dmem = {load_data_from_dmem[31:8], regfile_rs2_data[7:0]};
+              store_we_to_dmem = 4'b1111;
+            end else if (tempstore[1:0] == 2'b01) begin
+              store_data_to_dmem = {load_data_from_dmem[31:16], regfile_rs2_data[7:0], load_data_from_dmem[7:0]};
+              store_we_to_dmem = 4'b1111;
+            end else if (tempstore[1:0] == 2'b10) begin
+              store_data_to_dmem = {load_data_from_dmem[31:24], regfile_rs2_data[7:0], load_data_from_dmem[15:0]};
+              store_we_to_dmem = 4'b1111;
+            end else begin
+              store_data_to_dmem = {regfile_rs2_data[7:0], load_data_from_dmem[23:0]};
+              store_we_to_dmem = 4'b1111;
+            end
           end
           // sh
           3'b001: begin
-            // addr_to_dmem = regfile_rs1_data + imm_s_sext;
-            addr_to_dmem = ((regfile_rs1_data + imm_s_sext) << 2);
-            // addr_to_dmem = ((regfile_rs1_data + imm_i_sext) & ~(32'd3));
-            store_data_to_dmem = {{16{regfile_rs2_data[15]}}, regfile_rs2_data[15:0]};
-            store_we_to_dmem = 4'b0011;
+            if (tempstore[0] == 1'b0) begin
+              addr_to_dmem = ((regfile_rs1_data + imm_s_sext) & ~32'd3);
+              if (tempstore[1] == 1'b1) begin
+                store_data_to_dmem = {{16{regfile_rs2_data[15]}}, regfile_rs2_data[15:0]};
+                store_we_to_dmem = 4'b1100;
+              end else begin
+                store_data_to_dmem = {{16{regfile_rs2_data[15]}}, regfile_rs2_data[15:0]};
+                store_we_to_dmem = 4'b0011;
+              end
+            end
           end
           // sw
           3'b010: begin
-            // addr_to_dmem = regfile_rs1_data + imm_s_sext;
-            addr_to_dmem = ((regfile_rs1_data + imm_s_sext) << 2);
-            // addr_to_dmem = ((regfile_rs1_data + imm_i_sext) & ~(32'd3));
-            store_data_to_dmem = regfile_rs2_data;
-            store_we_to_dmem = 4'b1111;
+            if (tempstore[1:0] == 2'b00) begin
+              addr_to_dmem = regfile_rs1_data + imm_s_sext;
+              store_data_to_dmem = regfile_rs2_data;
+              store_we_to_dmem = 4'b1111;
+            end
           end
           default: begin
             illegal_insn = 1'b1;
