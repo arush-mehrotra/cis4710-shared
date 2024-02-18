@@ -253,14 +253,6 @@ module DatapathSingleCycle (
 
   always_comb begin
     illegal_insn = 1'b0;
-    regfile_we = 1'b0;
-    regfile_rd_data = 32'd0;
-    halt = 0;
-    pcNext = pcCurrent + 4;
-    addr_to_dmem = 32'd0;
-    store_data_to_dmem = 32'd0;
-    store_we_to_dmem = 4'b0000;
-    product = 64'd0;
     case (insn_opcode)
       OpLui: begin
         // TODO: start here by implementing lui
@@ -544,7 +536,7 @@ module DatapathSingleCycle (
           // lb
           3'b000: begin
             regfile_we = 1'b1;
-            addr_to_dmem = ((regfile_rs1_data + imm_i_sext) & ~32'd3);
+            assign addr_to_dmem = ((regfile_rs1_data + imm_i_sext) & ~32'd3);
             if (tempload[1:0] == 2'b00) begin
               regfile_rd_data = ({{24{load_data_from_dmem[7]}}, load_data_from_dmem[7:0]});
             end else if (tempload[1:0] == 2'b01) begin
@@ -559,7 +551,7 @@ module DatapathSingleCycle (
           3'b001: begin
             regfile_we = 1'b1;
             if (tempload[0] == 1'b0) begin
-              addr_to_dmem = ((regfile_rs1_data + imm_i_sext) & ~32'd3);
+              assign addr_to_dmem = ((regfile_rs1_data + imm_i_sext) & ~32'd3);
               if (tempload[1] == 1'b1) begin
                 regfile_rd_data = {{16{load_data_from_dmem[31]}}, load_data_from_dmem[31:16]};
               end else begin
@@ -571,14 +563,14 @@ module DatapathSingleCycle (
           3'b010: begin
             regfile_we = 1'b1;
             if (tempload[1:0] == 2'b00) begin
-              addr_to_dmem = regfile_rs1_data + imm_i_sext;
+              assign addr_to_dmem = regfile_rs1_data + imm_i_sext;
               regfile_rd_data = load_data_from_dmem;
             end           
           end
           // lbu
           3'b100: begin
             regfile_we = 1'b1;
-            addr_to_dmem = ((regfile_rs1_data + imm_i_sext) & ~32'd3);
+            assign addr_to_dmem = ((regfile_rs1_data + imm_i_sext) & ~32'd3);
             if (tempload[1:0] == 2'b00) begin
               regfile_rd_data = ({{24{1'b0}}, load_data_from_dmem[7:0]});
             end else if (tempload[1:0] == 2'b01) begin
@@ -593,7 +585,7 @@ module DatapathSingleCycle (
           3'b101: begin
             regfile_we = 1'b1;
             if (tempload[0] == 1'b0) begin
-              addr_to_dmem = ((regfile_rs1_data + imm_i_sext) & ~32'd3);
+              assign addr_to_dmem = ((regfile_rs1_data + imm_i_sext) & ~32'd3);
               if (tempload[1] == 1'b1) begin
                 regfile_rd_data = {{16{1'b0}}, load_data_from_dmem[31:16]};
               end else begin
@@ -610,40 +602,40 @@ module DatapathSingleCycle (
         case (insn_from_imem[14:12])
           // sb
           3'b000: begin
-            addr_to_dmem = ((regfile_rs1_data + imm_s_sext) & ~32'd3);
+            assign addr_to_dmem = ((regfile_rs1_data + imm_s_sext) & ~32'd3);
             if (tempstore[1:0] == 2'b00) begin
-              store_data_to_dmem = {load_data_from_dmem[31:8], regfile_rs2_data[7:0]};
-              store_we_to_dmem = 4'b0001;
+              assign store_data_to_dmem = {load_data_from_dmem[31:8], regfile_rs2_data[7:0]};
+              assign store_we_to_dmem = 4'b0001;
             end else if (tempstore[1:0] == 2'b01) begin
-              store_data_to_dmem = {load_data_from_dmem[31:16], regfile_rs2_data[7:0], load_data_from_dmem[7:0]};
-              store_we_to_dmem = 4'b0010;
+              assign store_data_to_dmem = {load_data_from_dmem[31:16], regfile_rs2_data[7:0], load_data_from_dmem[7:0]};
+              assign store_we_to_dmem = 4'b0010;
             end else if (tempstore[1:0] == 2'b10) begin
-              store_data_to_dmem = {load_data_from_dmem[31:24], regfile_rs2_data[7:0], load_data_from_dmem[15:0]};
-              store_we_to_dmem = 4'b0100;
+              assign store_data_to_dmem = {load_data_from_dmem[31:24], regfile_rs2_data[7:0], load_data_from_dmem[15:0]};
+              assign store_we_to_dmem = 4'b0100;
             end else begin
-              store_data_to_dmem = {regfile_rs2_data[7:0], load_data_from_dmem[23:0]};
-              store_we_to_dmem = 4'b1000;
+              assign store_data_to_dmem = {regfile_rs2_data[7:0], load_data_from_dmem[23:0]};
+              assign store_we_to_dmem = 4'b1000;
             end
           end
           // sh
           3'b001: begin
             if (tempstore[0] == 1'b0) begin
-              addr_to_dmem = ((regfile_rs1_data + imm_s_sext) & ~32'd3);
+              assign addr_to_dmem = ((regfile_rs1_data + imm_s_sext) & ~32'd3);
               if (tempstore[1] == 1'b1) begin
-                store_data_to_dmem = {regfile_rs2_data[15:0], 16'b0};
-                store_we_to_dmem = 4'b1100;
+                assign store_data_to_dmem = {regfile_rs2_data[15:0], 16'b0};
+                assign store_we_to_dmem = 4'b1100;
               end else begin
-                store_data_to_dmem = {16'b0, regfile_rs2_data[15:0]};
-                store_we_to_dmem = 4'b0011;
+                assign store_data_to_dmem = {16'b0, regfile_rs2_data[15:0]};
+                assign store_we_to_dmem = 4'b0011;
               end
             end
           end
           // sw
           3'b010: begin
             if (tempstore[1:0] == 2'b00) begin
-              addr_to_dmem = regfile_rs1_data + imm_s_sext;
-              store_data_to_dmem = regfile_rs2_data;
-              store_we_to_dmem = 4'b1111;
+              assign addr_to_dmem = regfile_rs1_data + imm_s_sext;
+              assign store_data_to_dmem = regfile_rs2_data;
+              assign store_we_to_dmem = 4'b1111;
             end
           end
           default: begin
@@ -655,6 +647,14 @@ module DatapathSingleCycle (
       end
       default: begin
         illegal_insn = 1'b1;
+        regfile_we = 1'b0;
+        regfile_rd_data = 32'd0;
+        halt = 0;
+        pcNext = pcCurrent + 4;
+        assign addr_to_dmem = 32'd0;
+        assign store_data_to_dmem = 32'd0;
+        assign store_we_to_dmem = 4'b0000;
+        product = 64'd0;
       end
     endcase
   end
