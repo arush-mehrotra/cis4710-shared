@@ -1,0 +1,102 @@
+Copyright 1986-2020 Xilinx, Inc. All Rights Reserved.
+------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2020.2 (lin64) Build 3064766 Wed Nov 18 09:12:47 MST 2020
+| Date         : Sun Feb 18 20:10:04 2024
+| Host         : big22.seas.upenn.edu running 64-bit openSUSE Leap 15.5
+| Command      : report_timing -file ./vivado_output/post_route_timing_report.txt
+| Design       : RiscvSystem
+| Device       : 7z020-clg484
+| Speed File   : -1  PRODUCTION 1.12 2019-11-22
+------------------------------------------------------------------------------------
+
+Timing Report
+
+Slack (MET) :             85.840ns  (required time - arrival time)
+  Source:                 mem/mem_reg_3_1/CLKBWRCLK
+                            (rising edge-triggered cell RAMB36E1 clocked by clk_mem_clk_wiz_0  {rise@50.000ns fall@150.000ns period=200.000ns})
+  Destination:            oled_device/mem_reg[3][6][2]/D
+                            (falling edge-triggered cell FDRE clocked by clk_mem_clk_wiz_0  {rise@50.000ns fall@150.000ns period=200.000ns})
+  Path Group:             clk_mem_clk_wiz_0
+  Path Type:              Setup (Max at Slow Process Corner)
+  Requirement:            100.000ns  (clk_mem_clk_wiz_0 fall@150.000ns - clk_mem_clk_wiz_0 rise@50.000ns)
+  Data Path Delay:        13.768ns  (logic 4.443ns (32.270%)  route 9.325ns (67.730%))
+  Logic Levels:           9  (CARRY4=5 LUT6=4)
+  Clock Path Skew:        -0.024ns (DCD - SCD + CPR)
+    Destination Clock Delay (DCD):    -1.507ns = ( 148.493 - 150.000 ) 
+    Source Clock Delay      (SCD):    -0.906ns = ( 49.094 - 50.000 ) 
+    Clock Pessimism Removal (CPR):    0.577ns
+  Clock Uncertainty:      0.289ns  ((TSJ^2 + DJ^2)^1/2) / 2 + PE
+    Total System Jitter     (TSJ):    0.071ns
+    Discrete Jitter          (DJ):    0.574ns
+    Phase Error              (PE):    0.000ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk_mem_clk_wiz_0 rise edge)
+                                                     50.000    50.000 r  
+    Y9                                                0.000    50.000 r  CLOCK_100MHz (IN)
+                         net (fo=0)                   0.000    50.000    mmcm/CLOCK_100MHz
+    Y9                   IBUF (Prop_ibuf_I_O)         1.490    51.490 r  mmcm/clkin1_ibufg/O
+                         net (fo=1, routed)           1.285    52.775    mmcm/clk_in1_clk_wiz_0
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT1)
+                                                     -7.343    45.432 r  mmcm/mmcm_adv_inst/CLKOUT1
+                         net (fo=2, routed)           1.855    47.287    mmcm/clk_mem_clk_wiz_0
+    BUFGCTRL_X0Y0        BUFGCTRL (Prop_bufgctrl_I0_O)
+                                                      0.101    47.388 r  mmcm/clkout2_buf/O
+                         net (fo=768, routed)         1.705    49.094    mem/clock_mem
+    RAMB36_X2Y2          RAMB36E1                                     r  mem/mem_reg_3_1/CLKBWRCLK
+  -------------------------------------------------------------------    -------------------
+    RAMB36_X2Y2          RAMB36E1 (Prop_ramb36e1_CLKBWRCLK_DOBDO[3])
+                                                      2.454    51.548 r  mem/mem_reg_3_1/DOBDO[3]
+                         net (fo=9, routed)           2.056    53.604    mem/datapath/sum1[11]
+    SLICE_X19Y9          CARRY4 (Prop_carry4_S[0]_CO[3])
+                                                      0.656    54.260 r  mem/mem_reg_0_0_i_20/CO[3]
+                         net (fo=1, routed)           0.000    54.260    mem/mem_reg_0_0_i_20_n_0
+    SLICE_X19Y10         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.114    54.374 r  mem/mem_reg[3][0][7]_i_55/CO[3]
+                         net (fo=1, routed)           0.000    54.374    mem/mem_reg[3][0][7]_i_55_n_0
+    SLICE_X19Y11         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.114    54.488 r  mem/mem_reg[3][0][7]_i_40/CO[3]
+                         net (fo=1, routed)           0.000    54.488    mem/mem_reg[3][0][7]_i_40_n_0
+    SLICE_X19Y12         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.114    54.602 r  mem/mem_reg[3][0][7]_i_53/CO[3]
+                         net (fo=1, routed)           0.000    54.602    mem/mem_reg[3][0][7]_i_53_n_0
+    SLICE_X19Y13         CARRY4 (Prop_carry4_CI_O[3])
+                                                      0.313    54.915 f  mem/mem_reg[3][0][7]_i_38/O[3]
+                         net (fo=1, routed)           0.878    55.793    mem/datapath/pcNext1[31]
+    SLICE_X17Y12         LUT6 (Prop_lut6_I1_O)        0.306    56.099 f  mem/mem[3][0][7]_i_34/O
+                         net (fo=2, routed)           0.608    56.707    mem/addr_from_proc[31]
+    SLICE_X20Y10         LUT6 (Prop_lut6_I0_O)        0.124    56.831 f  mem/mem[3][0][7]_i_27/O
+                         net (fo=1, routed)           0.964    57.795    mem/mem[3][0][7]_i_27_n_0
+    SLICE_X16Y10         LUT6 (Prop_lut6_I1_O)        0.124    57.919 r  mem/mem[3][0][7]_i_11/O
+                         net (fo=36, routed)          1.085    59.004    mem/mem[3][0][7]_i_11_n_0
+    SLICE_X10Y7          LUT6 (Prop_lut6_I3_O)        0.124    59.128 r  mem/mem[3][0][2]_i_1/O
+                         net (fo=65, routed)          3.734    62.862    oled_device/D[2]
+    SLICE_X13Y20         FDRE                                         r  oled_device/mem_reg[3][6][2]/D
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk_mem_clk_wiz_0 fall edge)
+                                                    150.000   150.000 f  
+    Y9                                                0.000   150.000 f  CLOCK_100MHz (IN)
+                         net (fo=0)                   0.000   150.000    mmcm/CLOCK_100MHz
+    Y9                   IBUF (Prop_ibuf_I_O)         1.420   151.420 f  mmcm/clkin1_ibufg/O
+                         net (fo=1, routed)           1.162   152.582    mmcm/clk_in1_clk_wiz_0
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT1)
+                                                     -7.438   145.144 f  mmcm/mmcm_adv_inst/CLKOUT1
+                         net (fo=2, routed)           1.691   146.835    mmcm/clk_mem_clk_wiz_0
+    BUFGCTRL_X0Y0        BUFGCTRL (Prop_bufgctrl_I0_O)
+                                                      0.091   146.926 f  mmcm/clkout2_buf/O
+                         net (fo=768, routed)         1.566   148.493    oled_device/clock_mem
+    SLICE_X13Y20         FDRE                                         r  oled_device/mem_reg[3][6][2]/C  (IS_INVERTED)
+                         clock pessimism              0.577   149.069    
+                         clock uncertainty           -0.289   148.780    
+    SLICE_X13Y20         FDRE (Setup_fdre_C_D)       -0.078   148.702    oled_device/mem_reg[3][6][2]
+  -------------------------------------------------------------------
+                         required time                        148.702    
+                         arrival time                         -62.862    
+  -------------------------------------------------------------------
+                         slack                                 85.840    
+
+
+
+
