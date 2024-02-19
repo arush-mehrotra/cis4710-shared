@@ -259,6 +259,14 @@ module DatapathSingleCycle (
 
   always_comb begin
     illegal_insn = 1'b0;
+    regfile_we = 1'b0;
+    regfile_rd_data = 32'd0;
+    halt = 0;
+    pcNext = pcCurrent + 4;
+    temp_addr_to_dmem = 32'd0;
+    temp_store_data_to_dmem = 32'd0;
+    temp_store_we_to_dmem = 4'b0000;
+    product = 64'd0;
     case (insn_opcode)
       OpLui: begin
         // TODO: start here by implementing lui
@@ -651,14 +659,6 @@ module DatapathSingleCycle (
       end
       default: begin
         illegal_insn = 1'b1;
-        regfile_we = 1'b0;
-        regfile_rd_data = 32'd0;
-        halt = 0;
-        pcNext = pcCurrent + 4;
-        temp_addr_to_dmem = 32'd0;
-        temp_store_data_to_dmem = 32'd0;
-        temp_store_we_to_dmem = 4'b0000;
-        product = 64'd0;
       end
     endcase
   end
