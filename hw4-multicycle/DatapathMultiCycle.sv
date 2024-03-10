@@ -67,11 +67,7 @@ module DatapathMultiCycle (
   // TODO: your code here (largely based on HW3B)
 
   // Handle Pipelined Div
-  localparam [2:0] STATE_NORMAL = 3'd0,
-                  STATE_DIV = 3'd1,
-                  STATE_DIVU = 3'd2,
-                  STATE_REM = 3'd3,
-                  STATE_REMU = 3'd4;
+  localparam [2:0] default_state = 3'd0, div_state = 3'd1, divu_state = 3'd2, rem_state = 3'd3, remu_state = 3'd4;
   
   reg [2:0] current_state, next_state;
   
@@ -222,7 +218,7 @@ module DatapathMultiCycle (
   // pipelined state tracker
   always @(posedge clk or posedge rst) begin
     if (rst) begin
-      current_state <= STATE_NORMAL;
+      current_state <= default_state;
     end else begin
       current_state <= next_state;
     end
@@ -295,7 +291,7 @@ module DatapathMultiCycle (
     next_state = current_state;
 
     case(current_state)
-      STATE_NORMAL: begin
+      default_state: begin
         case (insn_opcode)
           OpLui: begin
             // TODO: start here by implementing lui
@@ -422,7 +418,7 @@ module DatapathMultiCycle (
                   regfile_rd_data = regfile_rs1_data ^ regfile_rs2_data;
                 // div
                 end else if (insn_from_imem[31:25] == 7'd1) begin
-                  next_state = STATE_DIV;
+                  next_state = div_state;
                   pcNext = pcCurrent;
                 end
               end
@@ -436,7 +432,7 @@ module DatapathMultiCycle (
                   regfile_rd_data = $signed(regfile_rs1_data) >>> (regfile_rs2_data[4:0]);
                 // divu
                 end else if (insn_from_imem[31:25] == 7'd1) begin
-                  next_state = STATE_DIVU;
+                  next_state = divu_state;
                   pcNext = pcCurrent;
                 end
               end
@@ -447,7 +443,7 @@ module DatapathMultiCycle (
                   regfile_rd_data = regfile_rs1_data | regfile_rs2_data;
                 // rem
                 end else if (insn_from_imem[31:25] == 7'd1) begin
-                  next_state = STATE_REM;
+                  next_state = rem_state;
                   pcNext = pcCurrent;
                 end
               end
@@ -458,7 +454,7 @@ module DatapathMultiCycle (
                   regfile_rd_data = regfile_rs1_data & regfile_rs2_data;
                 // remu
                 end else if (insn_from_imem[31:25] == 7'd1) begin
-                  next_state = STATE_REMU;
+                  next_state = remu_state;
                   pcNext = pcCurrent;
                 end
               end
@@ -644,7 +640,7 @@ module DatapathMultiCycle (
           end
         endcase
       end
-      STATE_DIV: begin
+      div_state: begin
         regfile_we = 1'b1;
 
         if (regfile_rs2_data == 0) begin
@@ -665,18 +661,18 @@ module DatapathMultiCycle (
           end
         end 
 
-        next_state = STATE_NORMAL;
+        next_state = default_state;
       end
-      STATE_DIVU: begin
+      divu_state: begin
         regfile_we = 1'b1;
         if (regfile_rs2_data == 0) begin
           regfile_rd_data = ~(32'd0);
         end else begin
           regfile_rd_data = quotient2;
         end
-        next_state = STATE_NORMAL;
+        next_state = default_state;
       end
-      STATE_REM: begin
+      rem_state: begin
         regfile_we = 1'b1;
 
         if (regfile_rs2_data == 0) begin
@@ -701,16 +697,16 @@ module DatapathMultiCycle (
           end
         end
 
-        next_state = STATE_NORMAL;
+        next_state = default_state;
       end
-      STATE_REMU: begin
+      remu_state: begin
         regfile_we = 1'b1;
         if (regfile_rs2_data == 0) begin
           regfile_rd_data = regfile_rs1_data;
         end else begin
           regfile_rd_data = remainder4;
         end
-        next_state = STATE_NORMAL;
+        next_state = default_state;
       end
       default: begin
       end
