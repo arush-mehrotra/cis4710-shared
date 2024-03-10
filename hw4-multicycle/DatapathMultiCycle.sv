@@ -423,6 +423,7 @@ module DatapathMultiCycle (
                 // div
                 end else if (insn_from_imem[31:25] == 7'd1) begin
                   next_state = STATE_DIV;
+                  pcNext = pcCurrent;
                 end
               end
               // srl & sra
@@ -436,6 +437,7 @@ module DatapathMultiCycle (
                 // divu
                 end else if (insn_from_imem[31:25] == 7'd1) begin
                   next_state = STATE_DIVU;
+                  pcNext = pcCurrent;
                 end
               end
               // or
@@ -446,6 +448,7 @@ module DatapathMultiCycle (
                 // rem
                 end else if (insn_from_imem[31:25] == 7'd1) begin
                   next_state = STATE_REM;
+                  pcNext = pcCurrent;
                 end
               end
               // and
@@ -456,6 +459,7 @@ module DatapathMultiCycle (
                 // remu
                 end else if (insn_from_imem[31:25] == 7'd1) begin
                   next_state = STATE_REMU;
+                  pcNext = pcCurrent;
                 end
               end
               default: begin
