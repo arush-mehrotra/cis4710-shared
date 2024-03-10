@@ -1,0 +1,1424 @@
+Copyright 1986-2020 Xilinx, Inc. All Rights Reserved.
+--------------------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2020.2 (lin64) Build 3064766 Wed Nov 18 09:12:47 MST 2020
+| Date         : Sat Mar  9 20:00:59 2024
+| Host         : big12.seas.upenn.edu running 64-bit openSUSE Leap 15.5
+| Command      : report_timing_summary -file ./vivado_output/post_synth_timing_summary_report.txt
+| Design       : RiscvSystem
+| Device       : 7z020-clg484
+| Speed File   : -1  PRODUCTION 1.12 2019-11-22
+--------------------------------------------------------------------------------------------------
+
+Timing Summary Report
+
+------------------------------------------------------------------------------------------------
+| Timer Settings
+| --------------
+------------------------------------------------------------------------------------------------
+
+  Enable Multi Corner Analysis               :  Yes
+  Enable Pessimism Removal                   :  Yes
+  Pessimism Removal Resolution               :  Nearest Common Node
+  Enable Input Delay Default Clock           :  No
+  Enable Preset / Clear Arcs                 :  No
+  Disable Flight Delays                      :  No
+  Ignore I/O Paths                           :  No
+  Timing Early Launch at Borrowing Latches   :  No
+  Borrow Time for Max Delay Exceptions       :  Yes
+  Merge Timing Exceptions                    :  Yes
+
+  Corner  Analyze    Analyze    
+  Name    Max Paths  Min Paths  
+  ------  ---------  ---------  
+  Slow    Yes        Yes        
+  Fast    Yes        Yes        
+
+
+
+check_timing report
+
+Table of Contents
+-----------------
+1. checking no_clock (0)
+2. checking constant_clock (0)
+3. checking pulse_width_clock (0)
+4. checking unconstrained_internal_endpoints (0)
+5. checking no_input_delay (2)
+6. checking no_output_delay (8)
+7. checking multiple_clock (0)
+8. checking generated_clocks (0)
+9. checking loops (0)
+10. checking partial_input_delay (0)
+11. checking partial_output_delay (0)
+12. checking latch_loops (0)
+
+1. checking no_clock (0)
+------------------------
+ There are 0 register/latch pins with no clock.
+
+
+2. checking constant_clock (0)
+------------------------------
+ There are 0 register/latch pins with constant_clock.
+
+
+3. checking pulse_width_clock (0)
+---------------------------------
+ There are 0 register/latch pins which need pulse_width check
+
+
+4. checking unconstrained_internal_endpoints (0)
+------------------------------------------------
+ There are 0 pins that are not constrained for maximum delay.
+
+ There are 0 pins that are not constrained for maximum delay due to constant clock.
+
+
+5. checking no_input_delay (2)
+------------------------------
+ There are 2 input ports with no input delay specified. (HIGH)
+
+ There are 0 input ports with no input delay but user has a false path constraint.
+
+
+6. checking no_output_delay (8)
+-------------------------------
+ There are 8 ports with no output delay specified. (HIGH)
+
+ There are 0 ports with no output delay but user has a false path constraint
+
+ There are 0 ports with no output delay but with a timing clock defined on it or propagating through it
+
+
+7. checking multiple_clock (0)
+------------------------------
+ There are 0 register/latch pins with multiple clocks.
+
+
+8. checking generated_clocks (0)
+--------------------------------
+ There are 0 generated clocks that are not connected to a clock source.
+
+
+9. checking loops (0)
+---------------------
+ There are 0 combinational loops in the design.
+
+
+10. checking partial_input_delay (0)
+------------------------------------
+ There are 0 input ports with partial input delay specified.
+
+
+11. checking partial_output_delay (0)
+-------------------------------------
+ There are 0 ports with partial output delay specified.
+
+
+12. checking latch_loops (0)
+----------------------------
+ There are 0 combinational latch loops in the design through latch input
+
+
+
+------------------------------------------------------------------------------------------------
+| Design Timing Summary
+| ---------------------
+------------------------------------------------------------------------------------------------
+
+    WNS(ns)      TNS(ns)  TNS Failing Endpoints  TNS Total Endpoints      WHS(ns)      THS(ns)  THS Failing Endpoints  THS Total Endpoints     WPWS(ns)     TPWS(ns)  TPWS Failing Endpoints  TPWS Total Endpoints  
+    -------      -------  ---------------------  -------------------      -------      -------  ---------------------  -------------------     --------     --------  ----------------------  --------------------  
+     -1.929      -59.684                     32                 4552        0.045        0.000                      0                 4552        3.000        0.000                       0                  2009  
+
+
+Timing constraints are not met.
+
+
+------------------------------------------------------------------------------------------------
+| Clock Summary
+| -------------
+------------------------------------------------------------------------------------------------
+
+Clock                 Waveform(ns)       Period(ns)      Frequency(MHz)
+-----                 ------------       ----------      --------------
+CLOCK_100MHz          {0.000 5.000}      10.000          100.000         
+  clk_mem_clk_wiz_0   {19.231 57.692}    76.923          13.000          
+  clk_proc_clk_wiz_0  {0.000 38.462}     76.923          13.000          
+  clkfbout_clk_wiz_0  {0.000 5.000}      10.000          100.000         
+
+
+------------------------------------------------------------------------------------------------
+| Intra Clock Table
+| -----------------
+------------------------------------------------------------------------------------------------
+
+Clock                     WNS(ns)      TNS(ns)  TNS Failing Endpoints  TNS Total Endpoints      WHS(ns)      THS(ns)  THS Failing Endpoints  THS Total Endpoints     WPWS(ns)     TPWS(ns)  TPWS Failing Endpoints  TPWS Total Endpoints  
+-----                     -------      -------  ---------------------  -------------------      -------      -------  ---------------------  -------------------     --------     --------  ----------------------  --------------------  
+CLOCK_100MHz                                                                                                                                                            3.000        0.000                       0                     1  
+  clk_mem_clk_wiz_0        24.713        0.000                      0                 2201        0.045        0.000                      0                 2201       37.962        0.000                       0                   779  
+  clk_proc_clk_wiz_0       19.205        0.000                      0                 2247        0.045        0.000                      0                 2247       37.962        0.000                       0                  1226  
+  clkfbout_clk_wiz_0                                                                                                                                                    7.845        0.000                       0                     3  
+
+
+------------------------------------------------------------------------------------------------
+| Inter Clock Table
+| -----------------
+------------------------------------------------------------------------------------------------
+
+From Clock          To Clock                WNS(ns)      TNS(ns)  TNS Failing Endpoints  TNS Total Endpoints      WHS(ns)      THS(ns)  THS Failing Endpoints  THS Total Endpoints  
+----------          --------                -------      -------  ---------------------  -------------------      -------      -------  ---------------------  -------------------  
+clk_proc_clk_wiz_0  clk_mem_clk_wiz_0        16.691        0.000                      0                 1792       19.810        0.000                      0                 1792  
+clk_mem_clk_wiz_0   clk_proc_clk_wiz_0       -1.929      -59.684                     32                 2239       19.585        0.000                      0                 2239  
+
+
+------------------------------------------------------------------------------------------------
+| Other Path Groups Table
+| -----------------------
+------------------------------------------------------------------------------------------------
+
+Path Group    From Clock    To Clock          WNS(ns)      TNS(ns)  TNS Failing Endpoints  TNS Total Endpoints      WHS(ns)      THS(ns)  THS Failing Endpoints  THS Total Endpoints  
+----------    ----------    --------          -------      -------  ---------------------  -------------------      -------      -------  ---------------------  -------------------  
+
+
+------------------------------------------------------------------------------------------------
+| Timing Details
+| --------------
+------------------------------------------------------------------------------------------------
+
+
+---------------------------------------------------------------------------------------------------
+From Clock:  CLOCK_100MHz
+  To Clock:  CLOCK_100MHz
+
+Setup :           NA  Failing Endpoints,  Worst Slack           NA  ,  Total Violation           NA
+Hold  :           NA  Failing Endpoints,  Worst Slack           NA  ,  Total Violation           NA
+PW    :            0  Failing Endpoints,  Worst Slack        3.000ns,  Total Violation        0.000ns
+---------------------------------------------------------------------------------------------------
+
+
+Pulse Width Checks
+--------------------------------------------------------------------------------------
+Clock Name:         CLOCK_100MHz
+Waveform(ns):       { 0.000 5.000 }
+Period(ns):         10.000
+Sources:            { CLOCK_100MHz }
+
+Check Type        Corner  Lib Pin            Reference Pin  Required(ns)  Actual(ns)  Slack(ns)  Location  Pin
+Min Period        n/a     MMCME2_ADV/CLKIN1  n/a            1.249         10.000      8.751                mmcm/mmcm_adv_inst/CLKIN1
+Max Period        n/a     MMCME2_ADV/CLKIN1  n/a            100.000       10.000      90.000               mmcm/mmcm_adv_inst/CLKIN1
+Low Pulse Width   Slow    MMCME2_ADV/CLKIN1  n/a            2.000         5.000       3.000                mmcm/mmcm_adv_inst/CLKIN1
+High Pulse Width  Fast    MMCME2_ADV/CLKIN1  n/a            2.000         5.000       3.000                mmcm/mmcm_adv_inst/CLKIN1
+
+
+
+---------------------------------------------------------------------------------------------------
+From Clock:  clk_mem_clk_wiz_0
+  To Clock:  clk_mem_clk_wiz_0
+
+Setup :            0  Failing Endpoints,  Worst Slack       24.713ns,  Total Violation        0.000ns
+Hold  :            0  Failing Endpoints,  Worst Slack        0.045ns,  Total Violation        0.000ns
+PW    :            0  Failing Endpoints,  Worst Slack       37.962ns,  Total Violation        0.000ns
+---------------------------------------------------------------------------------------------------
+
+
+Max Delay Paths
+--------------------------------------------------------------------------------------
+Slack (MET) :             24.713ns  (required time - arrival time)
+  Source:                 mem/mem_reg_1_1/CLKBWRCLK
+                            (rising edge-triggered cell RAMB36E1 clocked by clk_mem_clk_wiz_0  {rise@19.231ns fall@57.692ns period=76.923ns})
+  Destination:            mem/mem_reg_3_1/DIADI[1]
+                            (falling edge-triggered cell RAMB36E1 clocked by clk_mem_clk_wiz_0  {rise@19.231ns fall@57.692ns period=76.923ns})
+  Path Group:             clk_mem_clk_wiz_0
+  Path Type:              Setup (Max at Slow Process Corner)
+  Requirement:            38.462ns  (clk_mem_clk_wiz_0 fall@57.692ns - clk_mem_clk_wiz_0 rise@19.231ns)
+  Data Path Delay:        13.261ns  (logic 5.271ns (39.747%)  route 7.990ns (60.253%))
+  Logic Levels:           14  (CARRY4=3 LUT3=1 LUT4=1 LUT5=1 LUT6=7 MUXF7=1)
+  Clock Path Skew:        -0.145ns (DCD - SCD + CPR)
+    Destination Clock Delay (DCD):    -2.550ns = ( 55.142 - 57.692 ) 
+    Source Clock Delay      (SCD):    -1.769ns = ( 17.461 - 19.231 ) 
+    Clock Pessimism Removal (CPR):    0.636ns
+  Clock Uncertainty:      0.101ns  ((TSJ^2 + DJ^2)^1/2) / 2 + PE
+    Total System Jitter     (TSJ):    0.071ns
+    Discrete Jitter          (DJ):    0.189ns
+    Phase Error              (PE):    0.000ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk_mem_clk_wiz_0 rise edge)
+                                                     19.231    19.231 r  
+    Y9                                                0.000    19.231 r  CLOCK_100MHz (IN)
+                         net (fo=0)                   0.000    19.231    mmcm/CLOCK_100MHz
+    Y9                   IBUF (Prop_ibuf_I_O)         1.490    20.721 r  mmcm/clkin1_ibufg/O
+                         net (fo=1, unplaced)         0.584    21.305    mmcm/clk_in1_clk_wiz_0
+                         MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT1)
+                                                     -5.113    16.192 r  mmcm/mmcm_adv_inst/CLKOUT1
+                         net (fo=2, unplaced)         0.584    16.776    mmcm/clk_mem_clk_wiz_0
+                         BUFGCTRL (Prop_bufgctrl_I0_O)
+                                                      0.101    16.877 r  mmcm/clkout2_buf/O
+                         net (fo=736, unplaced)       0.584    17.461    mem/clock_mem
+                         RAMB36E1                                     r  mem/mem_reg_1_1/CLKBWRCLK
+  -------------------------------------------------------------------    -------------------
+                         RAMB36E1 (Prop_ramb36e1_CLKBWRCLK_DOBDO[3])
+                                                      2.454    19.915 r  mem/mem_reg_1_1/DOBDO[3]
+                         net (fo=260, unplaced)       0.800    20.715    datapath/rf/insn_from_imem[8]
+                         LUT6 (Prop_lut6_I4_O)        0.124    20.839 r  datapath/rf/intermediate_dividend[17]_i_9/O
+                         net (fo=1, unplaced)         0.000    20.839    datapath/rf/intermediate_dividend[17]_i_9_n_0
+                         MUXF7 (Prop_muxf7_I1_O)      0.247    21.086 r  datapath/rf/intermediate_dividend_reg[17]_i_3/O
+                         net (fo=1, unplaced)         0.905    21.991    datapath/rf/intermediate_dividend_reg[17]_i_3_n_0
+                         LUT6 (Prop_lut6_I1_O)        0.298    22.289 r  datapath/rf/intermediate_dividend[17]_i_1/O
+                         net (fo=64, unplaced)        0.727    23.016    datapath/rf/mem_reg_2_0[1]
+                         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.520    23.536 r  datapath/rf/mem_reg_0_0_i_37/CO[3]
+                         net (fo=1, unplaced)         0.009    23.545    datapath/rf/mem_reg_0_0_i_37_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    23.662 r  datapath/rf/mem_reg_0_0_i_33/CO[3]
+                         net (fo=1, unplaced)         0.000    23.662    datapath/rf/mem_reg_0_0_i_33_n_0
+                         CARRY4 (Prop_carry4_CI_O[1])
+                                                      0.337    23.999 r  datapath/rf/mem_reg_0_0_i_29/O[1]
+                         net (fo=2, unplaced)         0.323    24.322    mem/pcNext1[7]
+                         LUT3 (Prop_lut3_I2_O)        0.306    24.628 f  mem/mem_reg_0_0_i_32/O
+                         net (fo=1, unplaced)         0.449    25.077    mem/mem_reg_0_0_i_32_n_0
+                         LUT6 (Prop_lut6_I3_O)        0.124    25.201 r  mem/mem_reg_0_0_i_7/O
+                         net (fo=10, unplaced)        0.492    25.693    mem/addr_from_proc[9]
+                         LUT6 (Prop_lut6_I5_O)        0.124    25.817 r  mem/mem[3][0][7]_i_39/O
+                         net (fo=2, unplaced)         1.122    26.939    mem/mem[3][0][7]_i_39_n_0
+                         LUT6 (Prop_lut6_I0_O)        0.124    27.063 r  mem/mem[3][0][7]_i_22/O
+                         net (fo=2, unplaced)         0.913    27.976    mem/mem[3][0][7]_i_22_n_0
+                         LUT6 (Prop_lut6_I2_O)        0.124    28.100 f  mem/mem[3][0][7]_i_11/O
+                         net (fo=58, unplaced)        0.535    28.635    mem/mem_reg_0_1_3
+                         LUT4 (Prop_lut4_I3_O)        0.124    28.759 r  mem/mem_reg_3_1_i_12/O
+                         net (fo=3, unplaced)         0.467    29.226    mem/load_data_to_proc[29]
+                         LUT5 (Prop_lut5_I2_O)        0.124    29.350 f  mem/mem_reg_3_1_i_8/O
+                         net (fo=1, unplaced)         0.449    29.799    mem/mem_reg_3_1_i_8_n_0
+                         LUT6 (Prop_lut6_I5_O)        0.124    29.923 r  mem/mem_reg_3_1_i_3/O
+                         net (fo=1, unplaced)         0.800    30.723    mem/store_data_from_proc[29]
+                         RAMB36E1                                     r  mem/mem_reg_3_1/DIADI[1]
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk_mem_clk_wiz_0 fall edge)
+                                                     57.692    57.692 f  
+    Y9                                                0.000    57.692 f  CLOCK_100MHz (IN)
+                         net (fo=0)                   0.000    57.692    mmcm/CLOCK_100MHz
+    Y9                   IBUF (Prop_ibuf_I_O)         1.420    59.112 f  mmcm/clkin1_ibufg/O
+                         net (fo=1, unplaced)         0.439    59.551    mmcm/clk_in1_clk_wiz_0
+                         MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT1)
+                                                     -5.378    54.173 f  mmcm/mmcm_adv_inst/CLKOUT1
+                         net (fo=2, unplaced)         0.439    54.612    mmcm/clk_mem_clk_wiz_0
+                         BUFGCTRL (Prop_bufgctrl_I0_O)
+                                                      0.091    54.703 f  mmcm/clkout2_buf/O
+                         net (fo=736, unplaced)       0.439    55.142    mem/clock_mem
+                         RAMB36E1                                     r  mem/mem_reg_3_1/CLKARDCLK  (IS_INVERTED)
+                         clock pessimism              0.636    55.778    
+                         clock uncertainty           -0.101    55.677    
+                         RAMB36E1 (Setup_ramb36e1_CLKARDCLK_DIADI[1])
+                                                     -0.241    55.436    mem/mem_reg_3_1
+  -------------------------------------------------------------------
+                         required time                         55.436    
+                         arrival time                         -30.723    
+  -------------------------------------------------------------------
+                         slack                                 24.713    
+
+
+
+
+
+Min Delay Paths
+--------------------------------------------------------------------------------------
+Slack (MET) :             0.045ns  (arrival time - required time)
+  Source:                 mmcm/seq_reg2_reg[0]/C
+                            (rising edge-triggered cell FDCE clocked by clk_mem_clk_wiz_0  {rise@19.231ns fall@57.692ns period=76.923ns})
+  Destination:            mmcm/seq_reg2_reg[1]/D
+                            (rising edge-triggered cell FDCE clocked by clk_mem_clk_wiz_0  {rise@19.231ns fall@57.692ns period=76.923ns})
+  Path Group:             clk_mem_clk_wiz_0
+  Path Type:              Hold (Min at Fast Process Corner)
+  Requirement:            0.000ns  (clk_mem_clk_wiz_0 rise@19.231ns - clk_mem_clk_wiz_0 rise@19.231ns)
+  Data Path Delay:        0.228ns  (logic 0.147ns (64.493%)  route 0.081ns (35.507%))
+  Logic Levels:           0  
+  Clock Path Skew:        0.145ns (DCD - SCD - CPR)
+    Destination Clock Delay (DCD):    -1.144ns = ( 18.087 - 19.231 ) 
+    Source Clock Delay      (SCD):    -1.156ns = ( 18.075 - 19.231 ) 
+    Clock Pessimism Removal (CPR):    -0.133ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk_mem_clk_wiz_0 rise edge)
+                                                     19.231    19.231 r  
+    Y9                                                0.000    19.231 r  CLOCK_100MHz (IN)
+                         net (fo=0)                   0.000    19.231    mmcm/CLOCK_100MHz
+    Y9                   IBUF (Prop_ibuf_I_O)         0.258    19.489 r  mmcm/clkin1_ibufg/O
+                         net (fo=1, unplaced)         0.114    19.603    mmcm/clk_in1_clk_wiz_0
+                         MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT1)
+                                                     -1.776    17.827 r  mmcm/mmcm_adv_inst/CLKOUT1
+                         net (fo=2, unplaced)         0.114    17.941    mmcm/clk_mem_clk_wiz_0
+                         BUFH (Prop_bufh_I_O)         0.020    17.961 r  mmcm/clkout2_buf_en/O
+                         net (fo=8, unplaced)         0.114    18.075    mmcm/clk_mem_clk_wiz_0_en_clk
+                         FDCE                                         r  mmcm/seq_reg2_reg[0]/C
+  -------------------------------------------------------------------    -------------------
+                         FDCE (Prop_fdce_C_Q)         0.147    18.222 r  mmcm/seq_reg2_reg[0]/Q
+                         net (fo=1, unplaced)         0.081    18.303    mmcm/seq_reg2[0]
+                         FDCE                                         r  mmcm/seq_reg2_reg[1]/D
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk_mem_clk_wiz_0 rise edge)
+                                                     19.231    19.231 r  
+    Y9                                                0.000    19.231 r  CLOCK_100MHz (IN)
+                         net (fo=0)                   0.000    19.231    mmcm/CLOCK_100MHz
+    Y9                   IBUF (Prop_ibuf_I_O)         0.446    19.677 r  mmcm/clkin1_ibufg/O
+                         net (fo=1, unplaced)         0.259    19.936    mmcm/clk_in1_clk_wiz_0
+                         MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT1)
+                                                     -2.410    17.526 r  mmcm/mmcm_adv_inst/CLKOUT1
+                         net (fo=2, unplaced)         0.259    17.785    mmcm/clk_mem_clk_wiz_0
+                         BUFH (Prop_bufh_I_O)         0.043    17.828 r  mmcm/clkout2_buf_en/O
+                         net (fo=8, unplaced)         0.259    18.087    mmcm/clk_mem_clk_wiz_0_en_clk
+                         FDCE                                         r  mmcm/seq_reg2_reg[1]/C
+                         clock pessimism              0.133    18.220    
+                         FDCE (Hold_fdce_C_D)         0.038    18.258    mmcm/seq_reg2_reg[1]
+  -------------------------------------------------------------------
+                         required time                        -18.258    
+                         arrival time                          18.303    
+  -------------------------------------------------------------------
+                         slack                                  0.045    
+
+
+
+
+
+Pulse Width Checks
+--------------------------------------------------------------------------------------
+Clock Name:         clk_mem_clk_wiz_0
+Waveform(ns):       { 19.231 57.692 }
+Period(ns):         76.923
+Sources:            { mmcm/mmcm_adv_inst/CLKOUT1 }
+
+Check Type        Corner  Lib Pin             Reference Pin  Required(ns)  Actual(ns)  Slack(ns)  Location  Pin
+Min Period        n/a     RAMB36E1/CLKARDCLK  n/a            2.944         76.923      73.979               mem/mem_reg_0_0/CLKARDCLK
+Max Period        n/a     MMCME2_ADV/CLKOUT1  n/a            213.360       76.923      136.437              mmcm/mmcm_adv_inst/CLKOUT1
+Low Pulse Width   Slow    FDRE/C              n/a            0.500         38.462      37.962               oled_device/m_OLEDCtrl/SPI_CTRL/shift_counter_reg[3]/C
+High Pulse Width  Fast    FDRE/C              n/a            0.500         38.462      37.962               mem_reg[3][0][0]_i_3/C
+
+
+
+---------------------------------------------------------------------------------------------------
+From Clock:  clk_proc_clk_wiz_0
+  To Clock:  clk_proc_clk_wiz_0
+
+Setup :            0  Failing Endpoints,  Worst Slack       19.205ns,  Total Violation        0.000ns
+Hold  :            0  Failing Endpoints,  Worst Slack        0.045ns,  Total Violation        0.000ns
+PW    :            0  Failing Endpoints,  Worst Slack       37.962ns,  Total Violation        0.000ns
+---------------------------------------------------------------------------------------------------
+
+
+Max Delay Paths
+--------------------------------------------------------------------------------------
+Slack (MET) :             19.205ns  (required time - arrival time)
+  Source:                 datapath/rf/g_loop[23].regs_reg[23][0]/C
+                            (rising edge-triggered cell FDRE clocked by clk_proc_clk_wiz_0  {rise@0.000ns fall@38.462ns period=76.923ns})
+  Destination:            datapath/div/intermediate_quotient_reg[0]/D
+                            (rising edge-triggered cell FDCE clocked by clk_proc_clk_wiz_0  {rise@0.000ns fall@38.462ns period=76.923ns})
+  Path Group:             clk_proc_clk_wiz_0
+  Path Type:              Setup (Max at Slow Process Corner)
+  Requirement:            76.923ns  (clk_proc_clk_wiz_0 rise@76.923ns - clk_proc_clk_wiz_0 rise@0.000ns)
+  Data Path Delay:        57.516ns  (logic 20.683ns (35.960%)  route 36.833ns (64.040%))
+  Logic Levels:           103  (CARRY4=66 LUT1=2 LUT2=1 LUT3=2 LUT4=3 LUT5=12 LUT6=16 MUXF7=1)
+  Clock Path Skew:        -0.145ns (DCD - SCD + CPR)
+    Destination Clock Delay (DCD):    -2.550ns = ( 74.373 - 76.923 ) 
+    Source Clock Delay      (SCD):    -1.769ns
+    Clock Pessimism Removal (CPR):    0.636ns
+  Clock Uncertainty:      0.101ns  ((TSJ^2 + DJ^2)^1/2) / 2 + PE
+    Total System Jitter     (TSJ):    0.071ns
+    Discrete Jitter          (DJ):    0.189ns
+    Phase Error              (PE):    0.000ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk_proc_clk_wiz_0 rise edge)
+                                                      0.000     0.000 r  
+    Y9                                                0.000     0.000 r  CLOCK_100MHz (IN)
+                         net (fo=0)                   0.000     0.000    mmcm/CLOCK_100MHz
+    Y9                   IBUF (Prop_ibuf_I_O)         1.490     1.490 r  mmcm/clkin1_ibufg/O
+                         net (fo=1, unplaced)         0.584     2.074    mmcm/clk_in1_clk_wiz_0
+                         MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                     -5.113    -3.038 r  mmcm/mmcm_adv_inst/CLKOUT0
+                         net (fo=2, unplaced)         0.584    -2.454    mmcm/clk_proc_clk_wiz_0
+                         BUFGCTRL (Prop_bufgctrl_I0_O)
+                                                      0.101    -2.353 r  mmcm/clkout1_buf/O
+                         net (fo=1215, unplaced)      0.584    -1.769    datapath/rf/clock_processor
+                         FDRE                                         r  datapath/rf/g_loop[23].regs_reg[23][0]/C
+  -------------------------------------------------------------------    -------------------
+                         FDRE (Prop_fdre_C_Q)         0.478    -1.291 f  datapath/rf/g_loop[23].regs_reg[23][0]/Q
+                         net (fo=2, unplaced)         0.976    -0.315    datapath/rf/g_loop[23].regs_reg[23]_22[0]
+                         LUT6 (Prop_lut6_I0_O)        0.295    -0.020 f  datapath/rf/regfile_rd_data0_i_205/O
+                         net (fo=1, unplaced)         0.000    -0.020    datapath/rf/regfile_rd_data0_i_205_n_0
+                         MUXF7 (Prop_muxf7_I1_O)      0.247     0.227 f  datapath/rf/regfile_rd_data0_i_79/O
+                         net (fo=1, unplaced)         0.905     1.132    datapath/rf/regfile_rd_data0_i_79_n_0
+                         LUT6 (Prop_lut6_I1_O)        0.298     1.430 f  datapath/rf/regfile_rd_data0_i_17/O
+                         net (fo=203, unplaced)       0.566     1.996    datapath/rf/A[0]
+                         LUT1 (Prop_lut1_I0_O)        0.124     2.120 r  datapath/rf/intermediate_divisor[4]_i_3/O
+                         net (fo=1, unplaced)         0.333     2.453    datapath/rf/div/g_loop[1].d1/p_0_in[0]
+                         CARRY4 (Prop_carry4_CYINIT_CO[3])
+                                                      0.595     3.048 r  datapath/rf/intermediate_divisor_reg[4]_i_2__0/CO[3]
+                         net (fo=1, unplaced)         0.009     3.057    datapath/rf/intermediate_divisor_reg[4]_i_2__0_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117     3.174 r  datapath/rf/intermediate_divisor_reg[8]_i_2__0/CO[3]
+                         net (fo=1, unplaced)         0.000     3.174    datapath/rf/intermediate_divisor_reg[8]_i_2__0_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117     3.291 r  datapath/rf/intermediate_divisor_reg[12]_i_2__0/CO[3]
+                         net (fo=1, unplaced)         0.000     3.291    datapath/rf/intermediate_divisor_reg[12]_i_2__0_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117     3.408 r  datapath/rf/intermediate_divisor_reg[16]_i_2__0/CO[3]
+                         net (fo=1, unplaced)         0.000     3.408    datapath/rf/intermediate_divisor_reg[16]_i_2__0_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117     3.525 r  datapath/rf/intermediate_divisor_reg[20]_i_2__0/CO[3]
+                         net (fo=1, unplaced)         0.000     3.525    datapath/rf/intermediate_divisor_reg[20]_i_2__0_n_0
+                         CARRY4 (Prop_carry4_CI_O[3])
+                                                      0.331     3.856 r  datapath/rf/intermediate_divisor_reg[24]_i_2__0/O[3]
+                         net (fo=1, unplaced)         0.618     4.474    datapath/rf/unsignedrs20[24]
+                         LUT3 (Prop_lut3_I0_O)        0.307     4.781 r  datapath/rf/intermediate_divisor[24]_i_1__0/O
+                         net (fo=49, unplaced)        0.501     5.282    datapath/rf/unsignedrs2[23]
+                         LUT2 (Prop_lut2_I0_O)        0.150     5.432 r  datapath/rf/intermediate_quotient[15]_i_7/O
+                         net (fo=1, unplaced)         0.000     5.432    datapath/rf/intermediate_quotient[15]_i_7_n_0
+                         CARRY4 (Prop_carry4_DI[0]_CO[3])
+                                                      0.576     6.008 r  datapath/rf/intermediate_quotient_reg[15]_i_2/CO[3]
+                         net (fo=231, unplaced)       1.039     7.047    datapath/rf/intermediate_quotient_reg[15]_i_2_n_0
+                         LUT4 (Prop_lut4_I3_O)        0.116     7.163 f  datapath/rf/intermediate_quotient[14]_i_65/O
+                         net (fo=2, unplaced)         0.460     7.623    datapath/rf/div/temp_remainder[1]_31[0]
+                         LUT6 (Prop_lut6_I4_O)        0.124     7.747 r  datapath/rf/intermediate_quotient[14]_i_49/O
+                         net (fo=1, unplaced)         0.333     8.080    datapath/rf/intermediate_quotient[14]_i_49_n_0
+                         CARRY4 (Prop_carry4_DI[0]_CO[3])
+                                                      0.550     8.630 r  datapath/rf/intermediate_quotient_reg[14]_i_24/CO[3]
+                         net (fo=1, unplaced)         0.009     8.639    datapath/rf/intermediate_quotient_reg[14]_i_24_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117     8.756 r  datapath/rf/intermediate_quotient_reg[14]_i_12/CO[3]
+                         net (fo=1, unplaced)         0.000     8.756    datapath/rf/intermediate_quotient_reg[14]_i_12_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117     8.873 r  datapath/rf/intermediate_quotient_reg[14]_i_3/CO[3]
+                         net (fo=1, unplaced)         0.000     8.873    datapath/rf/intermediate_quotient_reg[14]_i_3_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117     8.990 r  datapath/rf/intermediate_quotient_reg[14]_i_2/CO[3]
+                         net (fo=143, unplaced)       1.027    10.017    datapath/rf/intermediate_quotient_reg[14]_i_2_n_0
+                         LUT4 (Prop_lut4_I3_O)        0.124    10.141 f  datapath/rf/intermediate_quotient[13]_i_93/O
+                         net (fo=1, unplaced)         0.449    10.590    datapath/rf/div/temp_remainder[2]_33[10]
+                         LUT4 (Prop_lut4_I2_O)        0.124    10.714 r  datapath/rf/intermediate_quotient[13]_i_39/O
+                         net (fo=1, unplaced)         0.639    11.353    datapath/rf/intermediate_quotient[13]_i_39_n_0
+                         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.520    11.873 r  datapath/rf/intermediate_quotient_reg[13]_i_12/CO[3]
+                         net (fo=1, unplaced)         0.000    11.873    datapath/rf/intermediate_quotient_reg[13]_i_12_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    11.990 r  datapath/rf/intermediate_quotient_reg[13]_i_3/CO[3]
+                         net (fo=1, unplaced)         0.000    11.990    datapath/rf/intermediate_quotient_reg[13]_i_3_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    12.107 r  datapath/rf/intermediate_quotient_reg[13]_i_2/CO[3]
+                         net (fo=44, unplaced)        0.997    13.104    datapath/rf/intermediate_quotient_reg[13]_i_2_n_0
+                         LUT3 (Prop_lut3_I2_O)        0.124    13.228 f  datapath/rf/intermediate_quotient[12]_i_88/O
+                         net (fo=2, unplaced)         0.460    13.688    datapath/rf/div/temp_remainder[3]_35[1]
+                         LUT6 (Prop_lut6_I1_O)        0.124    13.812 r  datapath/rf/intermediate_quotient[12]_i_54/O
+                         net (fo=1, unplaced)         0.639    14.451    datapath/rf/intermediate_quotient[12]_i_54_n_0
+                         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.520    14.971 r  datapath/rf/intermediate_quotient_reg[12]_i_29/CO[3]
+                         net (fo=1, unplaced)         0.009    14.980    datapath/rf/intermediate_quotient_reg[12]_i_29_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    15.097 r  datapath/rf/intermediate_quotient_reg[12]_i_12/CO[3]
+                         net (fo=1, unplaced)         0.000    15.097    datapath/rf/intermediate_quotient_reg[12]_i_12_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    15.214 r  datapath/rf/intermediate_quotient_reg[12]_i_3/CO[3]
+                         net (fo=1, unplaced)         0.000    15.214    datapath/rf/intermediate_quotient_reg[12]_i_3_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    15.331 r  datapath/rf/intermediate_quotient_reg[12]_i_2/CO[3]
+                         net (fo=155, unplaced)       1.029    16.360    datapath/rf/intermediate_quotient_reg[12]_i_2_n_0
+                         LUT5 (Prop_lut5_I4_O)        0.124    16.484 f  datapath/rf/intermediate_remainder[14]_i_21/O
+                         net (fo=8, unplaced)         0.487    16.971    datapath/rf/div/temp_remainder[4]_37[2]
+                         LUT6 (Prop_lut6_I4_O)        0.124    17.095 r  datapath/rf/intermediate_quotient[11]_i_58/O
+                         net (fo=1, unplaced)         0.639    17.734    datapath/rf/intermediate_quotient[11]_i_58_n_0
+                         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.520    18.254 r  datapath/rf/intermediate_quotient_reg[11]_i_29/CO[3]
+                         net (fo=1, unplaced)         0.009    18.263    datapath/rf/intermediate_quotient_reg[11]_i_29_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    18.380 r  datapath/rf/intermediate_quotient_reg[11]_i_12/CO[3]
+                         net (fo=1, unplaced)         0.000    18.380    datapath/rf/intermediate_quotient_reg[11]_i_12_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    18.497 r  datapath/rf/intermediate_quotient_reg[11]_i_3/CO[3]
+                         net (fo=1, unplaced)         0.000    18.497    datapath/rf/intermediate_quotient_reg[11]_i_3_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    18.614 r  datapath/rf/intermediate_quotient_reg[11]_i_2/CO[3]
+                         net (fo=74, unplaced)        1.010    19.624    datapath/rf/intermediate_quotient_reg[11]_i_2_n_0
+                         LUT5 (Prop_lut5_I4_O)        0.124    19.748 f  datapath/rf/intermediate_remainder[13]_i_21/O
+                         net (fo=9, unplaced)         0.490    20.238    datapath/rf/div/temp_remainder[5]_39[2]
+                         LUT6 (Prop_lut6_I4_O)        0.124    20.362 r  datapath/rf/intermediate_quotient[10]_i_54/O
+                         net (fo=1, unplaced)         0.639    21.001    datapath/rf/intermediate_quotient[10]_i_54_n_0
+                         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.520    21.521 r  datapath/rf/intermediate_quotient_reg[10]_i_29/CO[3]
+                         net (fo=1, unplaced)         0.009    21.530    datapath/rf/intermediate_quotient_reg[10]_i_29_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    21.647 r  datapath/rf/intermediate_quotient_reg[10]_i_12/CO[3]
+                         net (fo=1, unplaced)         0.000    21.647    datapath/rf/intermediate_quotient_reg[10]_i_12_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    21.764 r  datapath/rf/intermediate_quotient_reg[10]_i_3/CO[3]
+                         net (fo=1, unplaced)         0.000    21.764    datapath/rf/intermediate_quotient_reg[10]_i_3_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    21.881 r  datapath/rf/intermediate_quotient_reg[10]_i_2/CO[3]
+                         net (fo=152, unplaced)       1.028    22.909    datapath/rf/intermediate_quotient_reg[10]_i_2_n_0
+                         LUT5 (Prop_lut5_I4_O)        0.124    23.033 f  datapath/rf/intermediate_remainder[12]_i_20/O
+                         net (fo=9, unplaced)         0.490    23.523    datapath/rf/div/temp_remainder[6]_41[2]
+                         LUT6 (Prop_lut6_I4_O)        0.124    23.647 r  datapath/rf/intermediate_quotient[9]_i_58/O
+                         net (fo=1, unplaced)         0.639    24.286    datapath/rf/intermediate_quotient[9]_i_58_n_0
+                         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.520    24.806 r  datapath/rf/intermediate_quotient_reg[9]_i_29/CO[3]
+                         net (fo=1, unplaced)         0.009    24.815    datapath/rf/intermediate_quotient_reg[9]_i_29_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    24.932 r  datapath/rf/intermediate_quotient_reg[9]_i_12/CO[3]
+                         net (fo=1, unplaced)         0.000    24.932    datapath/rf/intermediate_quotient_reg[9]_i_12_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    25.049 r  datapath/rf/intermediate_quotient_reg[9]_i_3/CO[3]
+                         net (fo=1, unplaced)         0.000    25.049    datapath/rf/intermediate_quotient_reg[9]_i_3_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    25.166 r  datapath/rf/intermediate_quotient_reg[9]_i_2/CO[3]
+                         net (fo=78, unplaced)        1.011    26.177    datapath/rf/intermediate_quotient_reg[9]_i_2_n_0
+                         LUT5 (Prop_lut5_I4_O)        0.124    26.301 f  datapath/rf/intermediate_remainder[11]_i_20/O
+                         net (fo=9, unplaced)         0.490    26.791    datapath/rf/div/temp_remainder[7]_43[2]
+                         LUT6 (Prop_lut6_I4_O)        0.124    26.915 r  datapath/rf/intermediate_quotient[8]_i_54/O
+                         net (fo=1, unplaced)         0.639    27.554    datapath/rf/intermediate_quotient[8]_i_54_n_0
+                         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.520    28.074 r  datapath/rf/intermediate_quotient_reg[8]_i_29/CO[3]
+                         net (fo=1, unplaced)         0.009    28.083    datapath/rf/intermediate_quotient_reg[8]_i_29_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    28.200 r  datapath/rf/intermediate_quotient_reg[8]_i_12/CO[3]
+                         net (fo=1, unplaced)         0.000    28.200    datapath/rf/intermediate_quotient_reg[8]_i_12_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    28.317 r  datapath/rf/intermediate_quotient_reg[8]_i_3/CO[3]
+                         net (fo=1, unplaced)         0.000    28.317    datapath/rf/intermediate_quotient_reg[8]_i_3_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    28.434 r  datapath/rf/intermediate_quotient_reg[8]_i_2/CO[3]
+                         net (fo=149, unplaced)       1.028    29.462    datapath/rf/intermediate_quotient_reg[8]_i_2_n_0
+                         LUT5 (Prop_lut5_I4_O)        0.124    29.586 f  datapath/rf/intermediate_remainder[10]_i_12/O
+                         net (fo=9, unplaced)         0.490    30.076    datapath/rf/div/temp_remainder[8]_45[2]
+                         LUT6 (Prop_lut6_I4_O)        0.124    30.200 r  datapath/rf/intermediate_quotient[7]_i_58/O
+                         net (fo=1, unplaced)         0.639    30.839    datapath/rf/intermediate_quotient[7]_i_58_n_0
+                         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.520    31.359 r  datapath/rf/intermediate_quotient_reg[7]_i_29/CO[3]
+                         net (fo=1, unplaced)         0.009    31.368    datapath/rf/intermediate_quotient_reg[7]_i_29_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    31.485 r  datapath/rf/intermediate_quotient_reg[7]_i_12/CO[3]
+                         net (fo=1, unplaced)         0.000    31.485    datapath/rf/intermediate_quotient_reg[7]_i_12_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    31.602 r  datapath/rf/intermediate_quotient_reg[7]_i_3/CO[3]
+                         net (fo=1, unplaced)         0.000    31.602    datapath/rf/intermediate_quotient_reg[7]_i_3_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    31.719 r  datapath/rf/intermediate_quotient_reg[7]_i_2/CO[3]
+                         net (fo=82, unplaced)        1.013    32.732    datapath/rf/intermediate_quotient_reg[7]_i_2_n_0
+                         LUT5 (Prop_lut5_I4_O)        0.124    32.856 f  datapath/rf/intermediate_remainder[9]_i_12/O
+                         net (fo=9, unplaced)         0.490    33.346    datapath/rf/div/temp_remainder[9]_47[2]
+                         LUT6 (Prop_lut6_I4_O)        0.124    33.470 r  datapath/rf/intermediate_quotient[6]_i_47/O
+                         net (fo=1, unplaced)         0.639    34.109    datapath/rf/intermediate_quotient[6]_i_47_n_0
+                         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.520    34.629 r  datapath/rf/intermediate_quotient_reg[6]_i_29/CO[3]
+                         net (fo=1, unplaced)         0.009    34.638    datapath/rf/intermediate_quotient_reg[6]_i_29_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    34.755 r  datapath/rf/intermediate_quotient_reg[6]_i_12/CO[3]
+                         net (fo=1, unplaced)         0.000    34.755    datapath/rf/intermediate_quotient_reg[6]_i_12_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    34.872 r  datapath/rf/intermediate_quotient_reg[6]_i_3/CO[3]
+                         net (fo=1, unplaced)         0.000    34.872    datapath/rf/intermediate_quotient_reg[6]_i_3_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    34.989 r  datapath/rf/intermediate_quotient_reg[6]_i_2/CO[3]
+                         net (fo=146, unplaced)       1.027    36.016    datapath/rf/intermediate_quotient_reg[6]_i_2_n_0
+                         LUT5 (Prop_lut5_I4_O)        0.124    36.140 f  datapath/rf/intermediate_remainder[8]_i_11/O
+                         net (fo=9, unplaced)         0.490    36.630    datapath/rf/div/temp_remainder[10]_49[2]
+                         LUT6 (Prop_lut6_I4_O)        0.124    36.754 r  datapath/rf/intermediate_quotient[5]_i_55/O
+                         net (fo=1, unplaced)         0.639    37.393    datapath/rf/intermediate_quotient[5]_i_55_n_0
+                         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.520    37.913 r  datapath/rf/intermediate_quotient_reg[5]_i_29/CO[3]
+                         net (fo=1, unplaced)         0.009    37.922    datapath/rf/intermediate_quotient_reg[5]_i_29_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    38.039 r  datapath/rf/intermediate_quotient_reg[5]_i_12/CO[3]
+                         net (fo=1, unplaced)         0.000    38.039    datapath/rf/intermediate_quotient_reg[5]_i_12_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    38.156 r  datapath/rf/intermediate_quotient_reg[5]_i_3/CO[3]
+                         net (fo=1, unplaced)         0.000    38.156    datapath/rf/intermediate_quotient_reg[5]_i_3_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    38.273 r  datapath/rf/intermediate_quotient_reg[5]_i_2/CO[3]
+                         net (fo=87, unplaced)        1.014    39.287    datapath/rf/intermediate_quotient_reg[5]_i_2_n_0
+                         LUT5 (Prop_lut5_I4_O)        0.124    39.411 f  datapath/rf/intermediate_remainder[7]_i_11/O
+                         net (fo=9, unplaced)         0.490    39.901    datapath/rf/div/temp_remainder[11]_51[2]
+                         LUT6 (Prop_lut6_I4_O)        0.124    40.025 r  datapath/rf/intermediate_quotient[4]_i_42/O
+                         net (fo=1, unplaced)         0.639    40.664    datapath/rf/intermediate_quotient[4]_i_42_n_0
+                         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.520    41.184 r  datapath/rf/intermediate_quotient_reg[4]_i_26/CO[3]
+                         net (fo=1, unplaced)         0.009    41.193    datapath/rf/intermediate_quotient_reg[4]_i_26_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    41.310 r  datapath/rf/intermediate_quotient_reg[4]_i_12/CO[3]
+                         net (fo=1, unplaced)         0.000    41.310    datapath/rf/intermediate_quotient_reg[4]_i_12_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    41.427 r  datapath/rf/intermediate_quotient_reg[4]_i_3/CO[3]
+                         net (fo=1, unplaced)         0.000    41.427    datapath/rf/intermediate_quotient_reg[4]_i_3_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    41.544 r  datapath/rf/intermediate_quotient_reg[4]_i_2/CO[3]
+                         net (fo=143, unplaced)       1.027    42.571    datapath/rf/intermediate_quotient_reg[4]_i_2_n_0
+                         LUT5 (Prop_lut5_I4_O)        0.124    42.695 f  datapath/rf/intermediate_remainder[6]_i_3/O
+                         net (fo=9, unplaced)         0.490    43.185    datapath/rf/div/temp_remainder[12]_53[2]
+                         LUT6 (Prop_lut6_I4_O)        0.124    43.309 r  datapath/rf/intermediate_quotient[3]_i_44/O
+                         net (fo=1, unplaced)         0.639    43.948    datapath/rf/intermediate_quotient[3]_i_44_n_0
+                         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.520    44.468 r  datapath/rf/intermediate_quotient_reg[3]_i_26/CO[3]
+                         net (fo=1, unplaced)         0.009    44.477    datapath/rf/intermediate_quotient_reg[3]_i_26_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    44.594 r  datapath/rf/intermediate_quotient_reg[3]_i_12/CO[3]
+                         net (fo=1, unplaced)         0.000    44.594    datapath/rf/intermediate_quotient_reg[3]_i_12_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    44.711 r  datapath/rf/intermediate_quotient_reg[3]_i_3/CO[3]
+                         net (fo=1, unplaced)         0.000    44.711    datapath/rf/intermediate_quotient_reg[3]_i_3_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    44.828 r  datapath/rf/intermediate_quotient_reg[3]_i_2/CO[3]
+                         net (fo=92, unplaced)        1.015    45.843    datapath/rf/intermediate_quotient_reg[3]_i_2_n_0
+                         LUT5 (Prop_lut5_I4_O)        0.124    45.967 f  datapath/rf/intermediate_remainder[5]_i_3/O
+                         net (fo=9, unplaced)         0.490    46.457    datapath/rf/div/temp_remainder[13]_55[2]
+                         LUT6 (Prop_lut6_I4_O)        0.124    46.581 r  datapath/rf/intermediate_quotient[2]_i_38__0/O
+                         net (fo=1, unplaced)         0.639    47.220    datapath/rf/intermediate_quotient[2]_i_38__0_n_0
+                         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.520    47.740 r  datapath/rf/intermediate_quotient_reg[2]_i_22/CO[3]
+                         net (fo=1, unplaced)         0.009    47.749    datapath/rf/intermediate_quotient_reg[2]_i_22_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    47.866 r  datapath/rf/intermediate_quotient_reg[2]_i_12/CO[3]
+                         net (fo=1, unplaced)         0.000    47.866    datapath/rf/intermediate_quotient_reg[2]_i_12_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    47.983 r  datapath/rf/intermediate_quotient_reg[2]_i_3/CO[3]
+                         net (fo=1, unplaced)         0.000    47.983    datapath/rf/intermediate_quotient_reg[2]_i_3_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    48.100 r  datapath/rf/intermediate_quotient_reg[2]_i_2/CO[3]
+                         net (fo=141, unplaced)       1.026    49.126    datapath/rf/intermediate_quotient_reg[2]_i_2_n_0
+                         LUT5 (Prop_lut5_I4_O)        0.124    49.250 f  datapath/rf/intermediate_remainder[4]_i_2/O
+                         net (fo=8, unplaced)         0.487    49.737    datapath/rf/div/temp_remainder[14]_57[2]
+                         LUT6 (Prop_lut6_I4_O)        0.124    49.861 r  datapath/rf/intermediate_remainder[30]_i_119/O
+                         net (fo=1, unplaced)         0.639    50.500    datapath/rf/intermediate_remainder[30]_i_119_n_0
+                         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.520    51.020 r  datapath/rf/intermediate_remainder_reg[30]_i_87/CO[3]
+                         net (fo=1, unplaced)         0.009    51.029    datapath/rf/intermediate_remainder_reg[30]_i_87_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    51.146 r  datapath/rf/intermediate_remainder_reg[30]_i_51/CO[3]
+                         net (fo=1, unplaced)         0.000    51.146    datapath/rf/intermediate_remainder_reg[30]_i_51_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    51.263 r  datapath/rf/intermediate_remainder_reg[30]_i_15/CO[3]
+                         net (fo=1, unplaced)         0.000    51.263    datapath/rf/intermediate_remainder_reg[30]_i_15_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    51.380 r  datapath/rf/intermediate_remainder_reg[30]_i_4/CO[3]
+                         net (fo=86, unplaced)        1.014    52.394    datapath/rf/intermediate_remainder_reg[30]_i_4_n_0
+                         LUT5 (Prop_lut5_I4_O)        0.124    52.518 f  datapath/rf/intermediate_remainder[3]_i_2/O
+                         net (fo=4, unplaced)         0.473    52.991    datapath/rf/div/temp_remainder[15]_59[2]
+                         LUT6 (Prop_lut6_I4_O)        0.124    53.115 r  datapath/rf/intermediate_remainder[30]_i_127/O
+                         net (fo=1, unplaced)         0.639    53.754    datapath/rf/intermediate_remainder[30]_i_127_n_0
+                         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.520    54.274 r  datapath/rf/intermediate_remainder_reg[30]_i_100/CO[3]
+                         net (fo=1, unplaced)         0.009    54.283    datapath/rf/intermediate_remainder_reg[30]_i_100_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    54.400 r  datapath/rf/intermediate_remainder_reg[30]_i_64/CO[3]
+                         net (fo=1, unplaced)         0.000    54.400    datapath/rf/intermediate_remainder_reg[30]_i_64_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    54.517 r  datapath/rf/intermediate_remainder_reg[30]_i_27/CO[3]
+                         net (fo=1, unplaced)         0.000    54.517    datapath/rf/intermediate_remainder_reg[30]_i_27_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    54.634 f  datapath/rf/intermediate_remainder_reg[30]_i_6/CO[3]
+                         net (fo=32, unplaced)        0.989    55.623    datapath/rf/intermediate_remainder_reg[30]_i_6_n_0
+                         LUT1 (Prop_lut1_I0_O)        0.124    55.747 r  datapath/rf/intermediate_quotient[0]_i_1/O
+                         net (fo=1, unplaced)         0.000    55.747    datapath/div/intermediate_quotient_reg[15]_1[0]
+                         FDCE                                         r  datapath/div/intermediate_quotient_reg[0]/D
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk_proc_clk_wiz_0 rise edge)
+                                                     76.923    76.923 r  
+    Y9                                                0.000    76.923 r  CLOCK_100MHz (IN)
+                         net (fo=0)                   0.000    76.923    mmcm/CLOCK_100MHz
+    Y9                   IBUF (Prop_ibuf_I_O)         1.420    78.343 r  mmcm/clkin1_ibufg/O
+                         net (fo=1, unplaced)         0.439    78.782    mmcm/clk_in1_clk_wiz_0
+                         MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                     -5.378    73.404 r  mmcm/mmcm_adv_inst/CLKOUT0
+                         net (fo=2, unplaced)         0.439    73.843    mmcm/clk_proc_clk_wiz_0
+                         BUFGCTRL (Prop_bufgctrl_I0_O)
+                                                      0.091    73.934 r  mmcm/clkout1_buf/O
+                         net (fo=1215, unplaced)      0.439    74.373    datapath/div/clock_processor
+                         FDCE                                         r  datapath/div/intermediate_quotient_reg[0]/C
+                         clock pessimism              0.636    75.009    
+                         clock uncertainty           -0.101    74.908    
+                         FDCE (Setup_fdce_C_D)        0.044    74.952    datapath/div/intermediate_quotient_reg[0]
+  -------------------------------------------------------------------
+                         required time                         74.952    
+                         arrival time                         -55.747    
+  -------------------------------------------------------------------
+                         slack                                 19.205    
+
+
+
+
+
+Min Delay Paths
+--------------------------------------------------------------------------------------
+Slack (MET) :             0.045ns  (arrival time - required time)
+  Source:                 mmcm/seq_reg1_reg[0]/C
+                            (rising edge-triggered cell FDCE clocked by clk_proc_clk_wiz_0  {rise@0.000ns fall@38.462ns period=76.923ns})
+  Destination:            mmcm/seq_reg1_reg[1]/D
+                            (rising edge-triggered cell FDCE clocked by clk_proc_clk_wiz_0  {rise@0.000ns fall@38.462ns period=76.923ns})
+  Path Group:             clk_proc_clk_wiz_0
+  Path Type:              Hold (Min at Fast Process Corner)
+  Requirement:            0.000ns  (clk_proc_clk_wiz_0 rise@0.000ns - clk_proc_clk_wiz_0 rise@0.000ns)
+  Data Path Delay:        0.228ns  (logic 0.147ns (64.493%)  route 0.081ns (35.507%))
+  Logic Levels:           0  
+  Clock Path Skew:        0.145ns (DCD - SCD - CPR)
+    Destination Clock Delay (DCD):    -1.144ns
+    Source Clock Delay      (SCD):    -1.156ns
+    Clock Pessimism Removal (CPR):    -0.133ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk_proc_clk_wiz_0 rise edge)
+                                                      0.000     0.000 r  
+    Y9                                                0.000     0.000 r  CLOCK_100MHz (IN)
+                         net (fo=0)                   0.000     0.000    mmcm/CLOCK_100MHz
+    Y9                   IBUF (Prop_ibuf_I_O)         0.258     0.258 r  mmcm/clkin1_ibufg/O
+                         net (fo=1, unplaced)         0.114     0.372    mmcm/clk_in1_clk_wiz_0
+                         MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                     -1.776    -1.404 r  mmcm/mmcm_adv_inst/CLKOUT0
+                         net (fo=2, unplaced)         0.114    -1.290    mmcm/clk_proc_clk_wiz_0
+                         BUFH (Prop_bufh_I_O)         0.020    -1.270 r  mmcm/clkout1_buf_en/O
+                         net (fo=8, unplaced)         0.114    -1.156    mmcm/clk_proc_clk_wiz_0_en_clk
+                         FDCE                                         r  mmcm/seq_reg1_reg[0]/C
+  -------------------------------------------------------------------    -------------------
+                         FDCE (Prop_fdce_C_Q)         0.147    -1.009 r  mmcm/seq_reg1_reg[0]/Q
+                         net (fo=1, unplaced)         0.081    -0.928    mmcm/seq_reg1[0]
+                         FDCE                                         r  mmcm/seq_reg1_reg[1]/D
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk_proc_clk_wiz_0 rise edge)
+                                                      0.000     0.000 r  
+    Y9                                                0.000     0.000 r  CLOCK_100MHz (IN)
+                         net (fo=0)                   0.000     0.000    mmcm/CLOCK_100MHz
+    Y9                   IBUF (Prop_ibuf_I_O)         0.446     0.446 r  mmcm/clkin1_ibufg/O
+                         net (fo=1, unplaced)         0.259     0.705    mmcm/clk_in1_clk_wiz_0
+                         MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                     -2.410    -1.705 r  mmcm/mmcm_adv_inst/CLKOUT0
+                         net (fo=2, unplaced)         0.259    -1.446    mmcm/clk_proc_clk_wiz_0
+                         BUFH (Prop_bufh_I_O)         0.043    -1.403 r  mmcm/clkout1_buf_en/O
+                         net (fo=8, unplaced)         0.259    -1.144    mmcm/clk_proc_clk_wiz_0_en_clk
+                         FDCE                                         r  mmcm/seq_reg1_reg[1]/C
+                         clock pessimism              0.133    -1.011    
+                         FDCE (Hold_fdce_C_D)         0.038    -0.973    mmcm/seq_reg1_reg[1]
+  -------------------------------------------------------------------
+                         required time                          0.973    
+                         arrival time                          -0.928    
+  -------------------------------------------------------------------
+                         slack                                  0.045    
+
+
+
+
+
+Pulse Width Checks
+--------------------------------------------------------------------------------------
+Clock Name:         clk_proc_clk_wiz_0
+Waveform(ns):       { 0.000 38.462 }
+Period(ns):         76.923
+Sources:            { mmcm/mmcm_adv_inst/CLKOUT0 }
+
+Check Type        Corner  Lib Pin             Reference Pin  Required(ns)  Actual(ns)  Slack(ns)  Location  Pin
+Min Period        n/a     BUFGCTRL/I0         n/a            2.155         76.923      74.768               mmcm/clkout1_buf/I0
+Max Period        n/a     MMCME2_ADV/CLKOUT0  n/a            213.360       76.923      136.437              mmcm/mmcm_adv_inst/CLKOUT0
+Low Pulse Width   Slow    FDCE/C              n/a            0.500         38.462      37.962               datapath/current_state_reg[0]/C
+High Pulse Width  Slow    FDCE/C              n/a            0.500         38.462      37.962               datapath/current_state_reg[0]/C
+
+
+
+---------------------------------------------------------------------------------------------------
+From Clock:  clkfbout_clk_wiz_0
+  To Clock:  clkfbout_clk_wiz_0
+
+Setup :           NA  Failing Endpoints,  Worst Slack           NA  ,  Total Violation           NA
+Hold  :           NA  Failing Endpoints,  Worst Slack           NA  ,  Total Violation           NA
+PW    :            0  Failing Endpoints,  Worst Slack        7.845ns,  Total Violation        0.000ns
+---------------------------------------------------------------------------------------------------
+
+
+Pulse Width Checks
+--------------------------------------------------------------------------------------
+Clock Name:         clkfbout_clk_wiz_0
+Waveform(ns):       { 0.000 5.000 }
+Period(ns):         10.000
+Sources:            { mmcm/mmcm_adv_inst/CLKFBOUT }
+
+Check Type  Corner  Lib Pin             Reference Pin  Required(ns)  Actual(ns)  Slack(ns)  Location  Pin
+Min Period  n/a     BUFG/I              n/a            2.155         10.000      7.845                mmcm/clkf_buf/I
+Max Period  n/a     MMCME2_ADV/CLKFBIN  n/a            100.000       10.000      90.000               mmcm/mmcm_adv_inst/CLKFBIN
+
+
+
+---------------------------------------------------------------------------------------------------
+From Clock:  clk_proc_clk_wiz_0
+  To Clock:  clk_mem_clk_wiz_0
+
+Setup :            0  Failing Endpoints,  Worst Slack       16.691ns,  Total Violation        0.000ns
+Hold  :            0  Failing Endpoints,  Worst Slack       19.810ns,  Total Violation        0.000ns
+---------------------------------------------------------------------------------------------------
+
+
+Max Delay Paths
+--------------------------------------------------------------------------------------
+Slack (MET) :             16.691ns  (required time - arrival time)
+  Source:                 datapath/pcCurrent_reg[10]/C
+                            (rising edge-triggered cell FDRE clocked by clk_proc_clk_wiz_0  {rise@0.000ns fall@38.462ns period=76.923ns})
+  Destination:            mem/mem_reg_0_0/ADDRBWRADDR[10]
+                            (rising edge-triggered cell RAMB36E1 clocked by clk_mem_clk_wiz_0  {rise@19.231ns fall@57.692ns period=76.923ns})
+  Path Group:             clk_mem_clk_wiz_0
+  Path Type:              Setup (Max at Slow Process Corner)
+  Requirement:            19.231ns  (clk_mem_clk_wiz_0 rise@19.231ns - clk_proc_clk_wiz_0 rise@0.000ns)
+  Data Path Delay:        1.278ns  (logic 0.478ns (37.411%)  route 0.800ns (62.589%))
+  Logic Levels:           0  
+  Clock Path Skew:        -0.300ns (DCD - SCD + CPR)
+    Destination Clock Delay (DCD):    -2.550ns = ( 16.681 - 19.231 ) 
+    Source Clock Delay      (SCD):    -1.769ns
+    Clock Pessimism Removal (CPR):    0.481ns
+  Clock Uncertainty:      0.221ns  ((TSJ^2 + DJ^2)^1/2) / 2 + PE
+    Total System Jitter     (TSJ):    0.071ns
+    Discrete Jitter          (DJ):    0.189ns
+    Phase Error              (PE):    0.120ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk_proc_clk_wiz_0 rise edge)
+                                                      0.000     0.000 r  
+    Y9                                                0.000     0.000 r  CLOCK_100MHz (IN)
+                         net (fo=0)                   0.000     0.000    mmcm/CLOCK_100MHz
+    Y9                   IBUF (Prop_ibuf_I_O)         1.490     1.490 r  mmcm/clkin1_ibufg/O
+                         net (fo=1, unplaced)         0.584     2.074    mmcm/clk_in1_clk_wiz_0
+                         MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                     -5.113    -3.038 r  mmcm/mmcm_adv_inst/CLKOUT0
+                         net (fo=2, unplaced)         0.584    -2.454    mmcm/clk_proc_clk_wiz_0
+                         BUFGCTRL (Prop_bufgctrl_I0_O)
+                                                      0.101    -2.353 r  mmcm/clkout1_buf/O
+                         net (fo=1215, unplaced)      0.584    -1.769    datapath/clock_processor
+                         FDRE                                         r  datapath/pcCurrent_reg[10]/C
+  -------------------------------------------------------------------    -------------------
+                         FDRE (Prop_fdre_C_Q)         0.478    -1.291 r  datapath/pcCurrent_reg[10]/Q
+                         net (fo=14, unplaced)        0.800    -0.492    mem/Q[10]
+                         RAMB36E1                                     r  mem/mem_reg_0_0/ADDRBWRADDR[10]
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk_mem_clk_wiz_0 rise edge)
+                                                     19.231    19.231 r  
+    Y9                                                0.000    19.231 r  CLOCK_100MHz (IN)
+                         net (fo=0)                   0.000    19.231    mmcm/CLOCK_100MHz
+    Y9                   IBUF (Prop_ibuf_I_O)         1.420    20.651 r  mmcm/clkin1_ibufg/O
+                         net (fo=1, unplaced)         0.439    21.090    mmcm/clk_in1_clk_wiz_0
+                         MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT1)
+                                                     -5.378    15.712 r  mmcm/mmcm_adv_inst/CLKOUT1
+                         net (fo=2, unplaced)         0.439    16.151    mmcm/clk_mem_clk_wiz_0
+                         BUFGCTRL (Prop_bufgctrl_I0_O)
+                                                      0.091    16.242 r  mmcm/clkout2_buf/O
+                         net (fo=736, unplaced)       0.439    16.681    mem/clock_mem
+                         RAMB36E1                                     r  mem/mem_reg_0_0/CLKBWRCLK
+                         clock pessimism              0.481    17.161    
+                         clock uncertainty           -0.221    16.940    
+                         RAMB36E1 (Setup_ramb36e1_CLKBWRCLK_ADDRBWRADDR[10])
+                                                     -0.741    16.199    mem/mem_reg_0_0
+  -------------------------------------------------------------------
+                         required time                         16.199    
+                         arrival time                           0.492    
+  -------------------------------------------------------------------
+                         slack                                 16.691    
+
+
+
+
+
+Min Delay Paths
+--------------------------------------------------------------------------------------
+Slack (MET) :             19.810ns  (arrival time - required time)
+  Source:                 datapath/rf/g_loop[8].regs_reg[8][6]/C
+                            (rising edge-triggered cell FDRE clocked by clk_proc_clk_wiz_0  {rise@0.000ns fall@38.462ns period=76.923ns})
+  Destination:            oled_device/mem_reg[0][0][6]/D
+                            (falling edge-triggered cell FDRE clocked by clk_mem_clk_wiz_0  {rise@19.231ns fall@57.692ns period=76.923ns})
+  Path Group:             clk_mem_clk_wiz_0
+  Path Type:              Hold (Min at Fast Process Corner)
+  Requirement:            -19.231ns  (clk_mem_clk_wiz_0 fall@57.692ns - clk_proc_clk_wiz_0 rise@76.923ns)
+  Data Path Delay:        1.199ns  (logic 0.460ns (38.368%)  route 0.739ns (61.632%))
+  Logic Levels:           4  (LUT4=1 LUT6=2 MUXF7=1)
+  Clock Path Skew:        0.293ns (DCD - SCD - CPR)
+    Destination Clock Delay (DCD):    -1.158ns = ( 56.535 - 57.692 ) 
+    Source Clock Delay      (SCD):    -1.150ns = ( 75.773 - 76.923 ) 
+    Clock Pessimism Removal (CPR):    -0.301ns
+  Clock Uncertainty:      0.221ns  ((TSJ^2 + DJ^2)^1/2) / 2 + PE
+    Total System Jitter     (TSJ):    0.071ns
+    Discrete Jitter          (DJ):    0.189ns
+    Phase Error              (PE):    0.120ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk_proc_clk_wiz_0 rise edge)
+                                                     76.923    76.923 r  
+    Y9                                                0.000    76.923 r  CLOCK_100MHz (IN)
+                         net (fo=0)                   0.000    76.923    mmcm/CLOCK_100MHz
+    Y9                   IBUF (Prop_ibuf_I_O)         0.258    77.181 r  mmcm/clkin1_ibufg/O
+                         net (fo=1, unplaced)         0.114    77.295    mmcm/clk_in1_clk_wiz_0
+                         MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                     -1.776    75.519 r  mmcm/mmcm_adv_inst/CLKOUT0
+                         net (fo=2, unplaced)         0.114    75.633    mmcm/clk_proc_clk_wiz_0
+                         BUFGCTRL (Prop_bufgctrl_I0_O)
+                                                      0.026    75.659 r  mmcm/clkout1_buf/O
+                         net (fo=1215, unplaced)      0.114    75.773    datapath/rf/clock_processor
+                         FDRE                                         r  datapath/rf/g_loop[8].regs_reg[8][6]/C
+  -------------------------------------------------------------------    -------------------
+                         FDRE (Prop_fdre_C_Q)         0.147    75.920 r  datapath/rf/g_loop[8].regs_reg[8][6]/Q
+                         net (fo=2, unplaced)         0.136    76.056    datapath/rf/g_loop[8].regs_reg[8]_7[6]
+                         LUT6 (Prop_lut6_I5_O)        0.098    76.154 r  datapath/rf/intermediate_divisor[6]_i_10/O
+                         net (fo=1, unplaced)         0.000    76.154    datapath/rf/intermediate_divisor[6]_i_10_n_0
+                         MUXF7 (Prop_muxf7_I0_O)      0.062    76.216 r  datapath/rf/intermediate_divisor_reg[6]_i_4/O
+                         net (fo=2, unplaced)         0.183    76.398    datapath/rf/intermediate_divisor_reg[6]_i_4_n_0
+                         LUT6 (Prop_lut6_I3_O)        0.108    76.506 r  datapath/rf/intermediate_divisor[6]_i_1/O
+                         net (fo=88, unplaced)        0.421    76.927    datapath/rf/A[6]
+                         LUT4 (Prop_lut4_I0_O)        0.045    76.972 r  datapath/rf/mem[3][0][6]_i_1/O
+                         net (fo=64, unplaced)        0.000    76.972    oled_device/mem_reg[3][0][6]_0
+                         FDRE                                         r  oled_device/mem_reg[0][0][6]/D
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk_mem_clk_wiz_0 fall edge)
+                                                     57.692    57.692 f  
+    Y9                                                0.000    57.692 f  CLOCK_100MHz (IN)
+                         net (fo=0)                   0.000    57.692    mmcm/CLOCK_100MHz
+    Y9                   IBUF (Prop_ibuf_I_O)         0.446    58.138 f  mmcm/clkin1_ibufg/O
+                         net (fo=1, unplaced)         0.259    58.397    mmcm/clk_in1_clk_wiz_0
+                         MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT1)
+                                                     -2.410    55.988 f  mmcm/mmcm_adv_inst/CLKOUT1
+                         net (fo=2, unplaced)         0.259    56.247    mmcm/clk_mem_clk_wiz_0
+                         BUFGCTRL (Prop_bufgctrl_I0_O)
+                                                      0.029    56.276 f  mmcm/clkout2_buf/O
+                         net (fo=736, unplaced)       0.259    56.535    oled_device/clock_mem
+                         FDRE                                         r  oled_device/mem_reg[0][0][6]/C  (IS_INVERTED)
+                         clock pessimism              0.301    56.835    
+                         clock uncertainty            0.221    57.056    
+                         FDRE (Hold_fdre_C_D)         0.106    57.162    oled_device/mem_reg[0][0][6]
+  -------------------------------------------------------------------
+                         required time                        -57.162    
+                         arrival time                          76.972    
+  -------------------------------------------------------------------
+                         slack                                 19.810    
+
+
+
+
+
+---------------------------------------------------------------------------------------------------
+From Clock:  clk_mem_clk_wiz_0
+  To Clock:  clk_proc_clk_wiz_0
+
+Setup :           32  Failing Endpoints,  Worst Slack       -1.929ns,  Total Violation      -59.684ns
+Hold  :            0  Failing Endpoints,  Worst Slack       19.585ns,  Total Violation        0.000ns
+---------------------------------------------------------------------------------------------------
+
+
+Max Delay Paths
+--------------------------------------------------------------------------------------
+Slack (VIOLATED) :        -1.929ns  (required time - arrival time)
+  Source:                 mem/mem_reg_2_1/CLKBWRCLK
+                            (rising edge-triggered cell RAMB36E1 clocked by clk_mem_clk_wiz_0  {rise@19.231ns fall@57.692ns period=76.923ns})
+  Destination:            datapath/div/intermediate_quotient_reg[0]/D
+                            (rising edge-triggered cell FDCE clocked by clk_proc_clk_wiz_0  {rise@0.000ns fall@38.462ns period=76.923ns})
+  Path Group:             clk_proc_clk_wiz_0
+  Path Type:              Setup (Max at Slow Process Corner)
+  Requirement:            57.692ns  (clk_proc_clk_wiz_0 rise@76.923ns - clk_mem_clk_wiz_0 rise@19.231ns)
+  Data Path Delay:        59.145ns  (logic 22.488ns (38.022%)  route 36.657ns (61.978%))
+  Logic Levels:           103  (CARRY4=66 LUT1=2 LUT2=1 LUT3=2 LUT4=3 LUT5=12 LUT6=16 MUXF7=1)
+  Clock Path Skew:        -0.300ns (DCD - SCD + CPR)
+    Destination Clock Delay (DCD):    -2.550ns = ( 74.373 - 76.923 ) 
+    Source Clock Delay      (SCD):    -1.769ns = ( 17.461 - 19.231 ) 
+    Clock Pessimism Removal (CPR):    0.481ns
+  Clock Uncertainty:      0.221ns  ((TSJ^2 + DJ^2)^1/2) / 2 + PE
+    Total System Jitter     (TSJ):    0.071ns
+    Discrete Jitter          (DJ):    0.189ns
+    Phase Error              (PE):    0.120ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk_mem_clk_wiz_0 rise edge)
+                                                     19.231    19.231 r  
+    Y9                                                0.000    19.231 r  CLOCK_100MHz (IN)
+                         net (fo=0)                   0.000    19.231    mmcm/CLOCK_100MHz
+    Y9                   IBUF (Prop_ibuf_I_O)         1.490    20.721 r  mmcm/clkin1_ibufg/O
+                         net (fo=1, unplaced)         0.584    21.305    mmcm/clk_in1_clk_wiz_0
+                         MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT1)
+                                                     -5.113    16.192 r  mmcm/mmcm_adv_inst/CLKOUT1
+                         net (fo=2, unplaced)         0.584    16.776    mmcm/clk_mem_clk_wiz_0
+                         BUFGCTRL (Prop_bufgctrl_I0_O)
+                                                      0.101    16.877 r  mmcm/clkout2_buf/O
+                         net (fo=736, unplaced)       0.584    17.461    mem/clock_mem
+                         RAMB36E1                                     r  mem/mem_reg_2_1/CLKBWRCLK
+  -------------------------------------------------------------------    -------------------
+                         RAMB36E1 (Prop_ramb36e1_CLKBWRCLK_DOBDO[0])
+                                                      2.454    19.915 r  mem/mem_reg_2_1/DOBDO[0]
+                         net (fo=344, unplaced)       0.800    20.715    datapath/rf/insn_from_imem[13]
+                         LUT6 (Prop_lut6_I4_O)        0.124    20.839 f  datapath/rf/regfile_rd_data0_i_205/O
+                         net (fo=1, unplaced)         0.000    20.839    datapath/rf/regfile_rd_data0_i_205_n_0
+                         MUXF7 (Prop_muxf7_I1_O)      0.247    21.086 f  datapath/rf/regfile_rd_data0_i_79/O
+                         net (fo=1, unplaced)         0.905    21.991    datapath/rf/regfile_rd_data0_i_79_n_0
+                         LUT6 (Prop_lut6_I1_O)        0.298    22.289 f  datapath/rf/regfile_rd_data0_i_17/O
+                         net (fo=203, unplaced)       0.566    22.855    datapath/rf/A[0]
+                         LUT1 (Prop_lut1_I0_O)        0.124    22.979 r  datapath/rf/intermediate_divisor[4]_i_3/O
+                         net (fo=1, unplaced)         0.333    23.312    datapath/rf/div/g_loop[1].d1/p_0_in[0]
+                         CARRY4 (Prop_carry4_CYINIT_CO[3])
+                                                      0.595    23.907 r  datapath/rf/intermediate_divisor_reg[4]_i_2__0/CO[3]
+                         net (fo=1, unplaced)         0.009    23.916    datapath/rf/intermediate_divisor_reg[4]_i_2__0_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    24.033 r  datapath/rf/intermediate_divisor_reg[8]_i_2__0/CO[3]
+                         net (fo=1, unplaced)         0.000    24.033    datapath/rf/intermediate_divisor_reg[8]_i_2__0_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    24.150 r  datapath/rf/intermediate_divisor_reg[12]_i_2__0/CO[3]
+                         net (fo=1, unplaced)         0.000    24.150    datapath/rf/intermediate_divisor_reg[12]_i_2__0_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    24.267 r  datapath/rf/intermediate_divisor_reg[16]_i_2__0/CO[3]
+                         net (fo=1, unplaced)         0.000    24.267    datapath/rf/intermediate_divisor_reg[16]_i_2__0_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    24.384 r  datapath/rf/intermediate_divisor_reg[20]_i_2__0/CO[3]
+                         net (fo=1, unplaced)         0.000    24.384    datapath/rf/intermediate_divisor_reg[20]_i_2__0_n_0
+                         CARRY4 (Prop_carry4_CI_O[3])
+                                                      0.331    24.715 r  datapath/rf/intermediate_divisor_reg[24]_i_2__0/O[3]
+                         net (fo=1, unplaced)         0.618    25.333    datapath/rf/unsignedrs20[24]
+                         LUT3 (Prop_lut3_I0_O)        0.307    25.640 r  datapath/rf/intermediate_divisor[24]_i_1__0/O
+                         net (fo=49, unplaced)        0.501    26.141    datapath/rf/unsignedrs2[23]
+                         LUT2 (Prop_lut2_I0_O)        0.150    26.291 r  datapath/rf/intermediate_quotient[15]_i_7/O
+                         net (fo=1, unplaced)         0.000    26.291    datapath/rf/intermediate_quotient[15]_i_7_n_0
+                         CARRY4 (Prop_carry4_DI[0]_CO[3])
+                                                      0.576    26.867 r  datapath/rf/intermediate_quotient_reg[15]_i_2/CO[3]
+                         net (fo=231, unplaced)       1.039    27.906    datapath/rf/intermediate_quotient_reg[15]_i_2_n_0
+                         LUT4 (Prop_lut4_I3_O)        0.116    28.022 f  datapath/rf/intermediate_quotient[14]_i_65/O
+                         net (fo=2, unplaced)         0.460    28.482    datapath/rf/div/temp_remainder[1]_31[0]
+                         LUT6 (Prop_lut6_I4_O)        0.124    28.606 r  datapath/rf/intermediate_quotient[14]_i_49/O
+                         net (fo=1, unplaced)         0.333    28.939    datapath/rf/intermediate_quotient[14]_i_49_n_0
+                         CARRY4 (Prop_carry4_DI[0]_CO[3])
+                                                      0.550    29.489 r  datapath/rf/intermediate_quotient_reg[14]_i_24/CO[3]
+                         net (fo=1, unplaced)         0.009    29.498    datapath/rf/intermediate_quotient_reg[14]_i_24_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    29.615 r  datapath/rf/intermediate_quotient_reg[14]_i_12/CO[3]
+                         net (fo=1, unplaced)         0.000    29.615    datapath/rf/intermediate_quotient_reg[14]_i_12_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    29.732 r  datapath/rf/intermediate_quotient_reg[14]_i_3/CO[3]
+                         net (fo=1, unplaced)         0.000    29.732    datapath/rf/intermediate_quotient_reg[14]_i_3_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    29.849 r  datapath/rf/intermediate_quotient_reg[14]_i_2/CO[3]
+                         net (fo=143, unplaced)       1.027    30.876    datapath/rf/intermediate_quotient_reg[14]_i_2_n_0
+                         LUT4 (Prop_lut4_I3_O)        0.124    31.000 f  datapath/rf/intermediate_quotient[13]_i_93/O
+                         net (fo=1, unplaced)         0.449    31.449    datapath/rf/div/temp_remainder[2]_33[10]
+                         LUT4 (Prop_lut4_I2_O)        0.124    31.573 r  datapath/rf/intermediate_quotient[13]_i_39/O
+                         net (fo=1, unplaced)         0.639    32.212    datapath/rf/intermediate_quotient[13]_i_39_n_0
+                         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.520    32.732 r  datapath/rf/intermediate_quotient_reg[13]_i_12/CO[3]
+                         net (fo=1, unplaced)         0.000    32.732    datapath/rf/intermediate_quotient_reg[13]_i_12_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    32.849 r  datapath/rf/intermediate_quotient_reg[13]_i_3/CO[3]
+                         net (fo=1, unplaced)         0.000    32.849    datapath/rf/intermediate_quotient_reg[13]_i_3_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    32.966 r  datapath/rf/intermediate_quotient_reg[13]_i_2/CO[3]
+                         net (fo=44, unplaced)        0.997    33.963    datapath/rf/intermediate_quotient_reg[13]_i_2_n_0
+                         LUT3 (Prop_lut3_I2_O)        0.124    34.087 f  datapath/rf/intermediate_quotient[12]_i_88/O
+                         net (fo=2, unplaced)         0.460    34.547    datapath/rf/div/temp_remainder[3]_35[1]
+                         LUT6 (Prop_lut6_I1_O)        0.124    34.671 r  datapath/rf/intermediate_quotient[12]_i_54/O
+                         net (fo=1, unplaced)         0.639    35.310    datapath/rf/intermediate_quotient[12]_i_54_n_0
+                         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.520    35.830 r  datapath/rf/intermediate_quotient_reg[12]_i_29/CO[3]
+                         net (fo=1, unplaced)         0.009    35.839    datapath/rf/intermediate_quotient_reg[12]_i_29_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    35.956 r  datapath/rf/intermediate_quotient_reg[12]_i_12/CO[3]
+                         net (fo=1, unplaced)         0.000    35.956    datapath/rf/intermediate_quotient_reg[12]_i_12_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    36.073 r  datapath/rf/intermediate_quotient_reg[12]_i_3/CO[3]
+                         net (fo=1, unplaced)         0.000    36.073    datapath/rf/intermediate_quotient_reg[12]_i_3_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    36.190 r  datapath/rf/intermediate_quotient_reg[12]_i_2/CO[3]
+                         net (fo=155, unplaced)       1.029    37.219    datapath/rf/intermediate_quotient_reg[12]_i_2_n_0
+                         LUT5 (Prop_lut5_I4_O)        0.124    37.343 f  datapath/rf/intermediate_remainder[14]_i_21/O
+                         net (fo=8, unplaced)         0.487    37.830    datapath/rf/div/temp_remainder[4]_37[2]
+                         LUT6 (Prop_lut6_I4_O)        0.124    37.954 r  datapath/rf/intermediate_quotient[11]_i_58/O
+                         net (fo=1, unplaced)         0.639    38.593    datapath/rf/intermediate_quotient[11]_i_58_n_0
+                         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.520    39.113 r  datapath/rf/intermediate_quotient_reg[11]_i_29/CO[3]
+                         net (fo=1, unplaced)         0.009    39.122    datapath/rf/intermediate_quotient_reg[11]_i_29_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    39.239 r  datapath/rf/intermediate_quotient_reg[11]_i_12/CO[3]
+                         net (fo=1, unplaced)         0.000    39.239    datapath/rf/intermediate_quotient_reg[11]_i_12_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    39.356 r  datapath/rf/intermediate_quotient_reg[11]_i_3/CO[3]
+                         net (fo=1, unplaced)         0.000    39.356    datapath/rf/intermediate_quotient_reg[11]_i_3_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    39.473 r  datapath/rf/intermediate_quotient_reg[11]_i_2/CO[3]
+                         net (fo=74, unplaced)        1.010    40.483    datapath/rf/intermediate_quotient_reg[11]_i_2_n_0
+                         LUT5 (Prop_lut5_I4_O)        0.124    40.607 f  datapath/rf/intermediate_remainder[13]_i_21/O
+                         net (fo=9, unplaced)         0.490    41.097    datapath/rf/div/temp_remainder[5]_39[2]
+                         LUT6 (Prop_lut6_I4_O)        0.124    41.221 r  datapath/rf/intermediate_quotient[10]_i_54/O
+                         net (fo=1, unplaced)         0.639    41.860    datapath/rf/intermediate_quotient[10]_i_54_n_0
+                         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.520    42.380 r  datapath/rf/intermediate_quotient_reg[10]_i_29/CO[3]
+                         net (fo=1, unplaced)         0.009    42.389    datapath/rf/intermediate_quotient_reg[10]_i_29_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    42.506 r  datapath/rf/intermediate_quotient_reg[10]_i_12/CO[3]
+                         net (fo=1, unplaced)         0.000    42.506    datapath/rf/intermediate_quotient_reg[10]_i_12_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    42.623 r  datapath/rf/intermediate_quotient_reg[10]_i_3/CO[3]
+                         net (fo=1, unplaced)         0.000    42.623    datapath/rf/intermediate_quotient_reg[10]_i_3_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    42.740 r  datapath/rf/intermediate_quotient_reg[10]_i_2/CO[3]
+                         net (fo=152, unplaced)       1.028    43.768    datapath/rf/intermediate_quotient_reg[10]_i_2_n_0
+                         LUT5 (Prop_lut5_I4_O)        0.124    43.892 f  datapath/rf/intermediate_remainder[12]_i_20/O
+                         net (fo=9, unplaced)         0.490    44.382    datapath/rf/div/temp_remainder[6]_41[2]
+                         LUT6 (Prop_lut6_I4_O)        0.124    44.506 r  datapath/rf/intermediate_quotient[9]_i_58/O
+                         net (fo=1, unplaced)         0.639    45.145    datapath/rf/intermediate_quotient[9]_i_58_n_0
+                         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.520    45.665 r  datapath/rf/intermediate_quotient_reg[9]_i_29/CO[3]
+                         net (fo=1, unplaced)         0.009    45.674    datapath/rf/intermediate_quotient_reg[9]_i_29_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    45.791 r  datapath/rf/intermediate_quotient_reg[9]_i_12/CO[3]
+                         net (fo=1, unplaced)         0.000    45.791    datapath/rf/intermediate_quotient_reg[9]_i_12_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    45.908 r  datapath/rf/intermediate_quotient_reg[9]_i_3/CO[3]
+                         net (fo=1, unplaced)         0.000    45.908    datapath/rf/intermediate_quotient_reg[9]_i_3_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    46.025 r  datapath/rf/intermediate_quotient_reg[9]_i_2/CO[3]
+                         net (fo=78, unplaced)        1.011    47.036    datapath/rf/intermediate_quotient_reg[9]_i_2_n_0
+                         LUT5 (Prop_lut5_I4_O)        0.124    47.160 f  datapath/rf/intermediate_remainder[11]_i_20/O
+                         net (fo=9, unplaced)         0.490    47.650    datapath/rf/div/temp_remainder[7]_43[2]
+                         LUT6 (Prop_lut6_I4_O)        0.124    47.774 r  datapath/rf/intermediate_quotient[8]_i_54/O
+                         net (fo=1, unplaced)         0.639    48.413    datapath/rf/intermediate_quotient[8]_i_54_n_0
+                         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.520    48.933 r  datapath/rf/intermediate_quotient_reg[8]_i_29/CO[3]
+                         net (fo=1, unplaced)         0.009    48.942    datapath/rf/intermediate_quotient_reg[8]_i_29_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    49.059 r  datapath/rf/intermediate_quotient_reg[8]_i_12/CO[3]
+                         net (fo=1, unplaced)         0.000    49.059    datapath/rf/intermediate_quotient_reg[8]_i_12_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    49.176 r  datapath/rf/intermediate_quotient_reg[8]_i_3/CO[3]
+                         net (fo=1, unplaced)         0.000    49.176    datapath/rf/intermediate_quotient_reg[8]_i_3_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    49.293 r  datapath/rf/intermediate_quotient_reg[8]_i_2/CO[3]
+                         net (fo=149, unplaced)       1.028    50.321    datapath/rf/intermediate_quotient_reg[8]_i_2_n_0
+                         LUT5 (Prop_lut5_I4_O)        0.124    50.445 f  datapath/rf/intermediate_remainder[10]_i_12/O
+                         net (fo=9, unplaced)         0.490    50.935    datapath/rf/div/temp_remainder[8]_45[2]
+                         LUT6 (Prop_lut6_I4_O)        0.124    51.059 r  datapath/rf/intermediate_quotient[7]_i_58/O
+                         net (fo=1, unplaced)         0.639    51.698    datapath/rf/intermediate_quotient[7]_i_58_n_0
+                         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.520    52.218 r  datapath/rf/intermediate_quotient_reg[7]_i_29/CO[3]
+                         net (fo=1, unplaced)         0.009    52.227    datapath/rf/intermediate_quotient_reg[7]_i_29_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    52.344 r  datapath/rf/intermediate_quotient_reg[7]_i_12/CO[3]
+                         net (fo=1, unplaced)         0.000    52.344    datapath/rf/intermediate_quotient_reg[7]_i_12_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    52.461 r  datapath/rf/intermediate_quotient_reg[7]_i_3/CO[3]
+                         net (fo=1, unplaced)         0.000    52.461    datapath/rf/intermediate_quotient_reg[7]_i_3_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    52.578 r  datapath/rf/intermediate_quotient_reg[7]_i_2/CO[3]
+                         net (fo=82, unplaced)        1.013    53.591    datapath/rf/intermediate_quotient_reg[7]_i_2_n_0
+                         LUT5 (Prop_lut5_I4_O)        0.124    53.715 f  datapath/rf/intermediate_remainder[9]_i_12/O
+                         net (fo=9, unplaced)         0.490    54.205    datapath/rf/div/temp_remainder[9]_47[2]
+                         LUT6 (Prop_lut6_I4_O)        0.124    54.329 r  datapath/rf/intermediate_quotient[6]_i_47/O
+                         net (fo=1, unplaced)         0.639    54.968    datapath/rf/intermediate_quotient[6]_i_47_n_0
+                         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.520    55.488 r  datapath/rf/intermediate_quotient_reg[6]_i_29/CO[3]
+                         net (fo=1, unplaced)         0.009    55.497    datapath/rf/intermediate_quotient_reg[6]_i_29_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    55.614 r  datapath/rf/intermediate_quotient_reg[6]_i_12/CO[3]
+                         net (fo=1, unplaced)         0.000    55.614    datapath/rf/intermediate_quotient_reg[6]_i_12_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    55.731 r  datapath/rf/intermediate_quotient_reg[6]_i_3/CO[3]
+                         net (fo=1, unplaced)         0.000    55.731    datapath/rf/intermediate_quotient_reg[6]_i_3_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    55.848 r  datapath/rf/intermediate_quotient_reg[6]_i_2/CO[3]
+                         net (fo=146, unplaced)       1.027    56.875    datapath/rf/intermediate_quotient_reg[6]_i_2_n_0
+                         LUT5 (Prop_lut5_I4_O)        0.124    56.999 f  datapath/rf/intermediate_remainder[8]_i_11/O
+                         net (fo=9, unplaced)         0.490    57.489    datapath/rf/div/temp_remainder[10]_49[2]
+                         LUT6 (Prop_lut6_I4_O)        0.124    57.613 r  datapath/rf/intermediate_quotient[5]_i_55/O
+                         net (fo=1, unplaced)         0.639    58.252    datapath/rf/intermediate_quotient[5]_i_55_n_0
+                         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.520    58.772 r  datapath/rf/intermediate_quotient_reg[5]_i_29/CO[3]
+                         net (fo=1, unplaced)         0.009    58.781    datapath/rf/intermediate_quotient_reg[5]_i_29_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    58.898 r  datapath/rf/intermediate_quotient_reg[5]_i_12/CO[3]
+                         net (fo=1, unplaced)         0.000    58.898    datapath/rf/intermediate_quotient_reg[5]_i_12_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    59.015 r  datapath/rf/intermediate_quotient_reg[5]_i_3/CO[3]
+                         net (fo=1, unplaced)         0.000    59.015    datapath/rf/intermediate_quotient_reg[5]_i_3_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    59.132 r  datapath/rf/intermediate_quotient_reg[5]_i_2/CO[3]
+                         net (fo=87, unplaced)        1.014    60.146    datapath/rf/intermediate_quotient_reg[5]_i_2_n_0
+                         LUT5 (Prop_lut5_I4_O)        0.124    60.270 f  datapath/rf/intermediate_remainder[7]_i_11/O
+                         net (fo=9, unplaced)         0.490    60.760    datapath/rf/div/temp_remainder[11]_51[2]
+                         LUT6 (Prop_lut6_I4_O)        0.124    60.884 r  datapath/rf/intermediate_quotient[4]_i_42/O
+                         net (fo=1, unplaced)         0.639    61.523    datapath/rf/intermediate_quotient[4]_i_42_n_0
+                         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.520    62.043 r  datapath/rf/intermediate_quotient_reg[4]_i_26/CO[3]
+                         net (fo=1, unplaced)         0.009    62.052    datapath/rf/intermediate_quotient_reg[4]_i_26_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    62.169 r  datapath/rf/intermediate_quotient_reg[4]_i_12/CO[3]
+                         net (fo=1, unplaced)         0.000    62.169    datapath/rf/intermediate_quotient_reg[4]_i_12_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    62.286 r  datapath/rf/intermediate_quotient_reg[4]_i_3/CO[3]
+                         net (fo=1, unplaced)         0.000    62.286    datapath/rf/intermediate_quotient_reg[4]_i_3_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    62.403 r  datapath/rf/intermediate_quotient_reg[4]_i_2/CO[3]
+                         net (fo=143, unplaced)       1.027    63.430    datapath/rf/intermediate_quotient_reg[4]_i_2_n_0
+                         LUT5 (Prop_lut5_I4_O)        0.124    63.554 f  datapath/rf/intermediate_remainder[6]_i_3/O
+                         net (fo=9, unplaced)         0.490    64.044    datapath/rf/div/temp_remainder[12]_53[2]
+                         LUT6 (Prop_lut6_I4_O)        0.124    64.168 r  datapath/rf/intermediate_quotient[3]_i_44/O
+                         net (fo=1, unplaced)         0.639    64.807    datapath/rf/intermediate_quotient[3]_i_44_n_0
+                         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.520    65.327 r  datapath/rf/intermediate_quotient_reg[3]_i_26/CO[3]
+                         net (fo=1, unplaced)         0.009    65.336    datapath/rf/intermediate_quotient_reg[3]_i_26_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    65.453 r  datapath/rf/intermediate_quotient_reg[3]_i_12/CO[3]
+                         net (fo=1, unplaced)         0.000    65.453    datapath/rf/intermediate_quotient_reg[3]_i_12_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    65.570 r  datapath/rf/intermediate_quotient_reg[3]_i_3/CO[3]
+                         net (fo=1, unplaced)         0.000    65.570    datapath/rf/intermediate_quotient_reg[3]_i_3_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    65.687 r  datapath/rf/intermediate_quotient_reg[3]_i_2/CO[3]
+                         net (fo=92, unplaced)        1.015    66.702    datapath/rf/intermediate_quotient_reg[3]_i_2_n_0
+                         LUT5 (Prop_lut5_I4_O)        0.124    66.826 f  datapath/rf/intermediate_remainder[5]_i_3/O
+                         net (fo=9, unplaced)         0.490    67.316    datapath/rf/div/temp_remainder[13]_55[2]
+                         LUT6 (Prop_lut6_I4_O)        0.124    67.440 r  datapath/rf/intermediate_quotient[2]_i_38__0/O
+                         net (fo=1, unplaced)         0.639    68.079    datapath/rf/intermediate_quotient[2]_i_38__0_n_0
+                         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.520    68.599 r  datapath/rf/intermediate_quotient_reg[2]_i_22/CO[3]
+                         net (fo=1, unplaced)         0.009    68.608    datapath/rf/intermediate_quotient_reg[2]_i_22_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    68.725 r  datapath/rf/intermediate_quotient_reg[2]_i_12/CO[3]
+                         net (fo=1, unplaced)         0.000    68.725    datapath/rf/intermediate_quotient_reg[2]_i_12_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    68.842 r  datapath/rf/intermediate_quotient_reg[2]_i_3/CO[3]
+                         net (fo=1, unplaced)         0.000    68.842    datapath/rf/intermediate_quotient_reg[2]_i_3_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    68.959 r  datapath/rf/intermediate_quotient_reg[2]_i_2/CO[3]
+                         net (fo=141, unplaced)       1.026    69.985    datapath/rf/intermediate_quotient_reg[2]_i_2_n_0
+                         LUT5 (Prop_lut5_I4_O)        0.124    70.109 f  datapath/rf/intermediate_remainder[4]_i_2/O
+                         net (fo=8, unplaced)         0.487    70.596    datapath/rf/div/temp_remainder[14]_57[2]
+                         LUT6 (Prop_lut6_I4_O)        0.124    70.720 r  datapath/rf/intermediate_remainder[30]_i_119/O
+                         net (fo=1, unplaced)         0.639    71.359    datapath/rf/intermediate_remainder[30]_i_119_n_0
+                         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.520    71.879 r  datapath/rf/intermediate_remainder_reg[30]_i_87/CO[3]
+                         net (fo=1, unplaced)         0.009    71.888    datapath/rf/intermediate_remainder_reg[30]_i_87_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    72.005 r  datapath/rf/intermediate_remainder_reg[30]_i_51/CO[3]
+                         net (fo=1, unplaced)         0.000    72.005    datapath/rf/intermediate_remainder_reg[30]_i_51_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    72.122 r  datapath/rf/intermediate_remainder_reg[30]_i_15/CO[3]
+                         net (fo=1, unplaced)         0.000    72.122    datapath/rf/intermediate_remainder_reg[30]_i_15_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    72.239 r  datapath/rf/intermediate_remainder_reg[30]_i_4/CO[3]
+                         net (fo=86, unplaced)        1.014    73.253    datapath/rf/intermediate_remainder_reg[30]_i_4_n_0
+                         LUT5 (Prop_lut5_I4_O)        0.124    73.377 f  datapath/rf/intermediate_remainder[3]_i_2/O
+                         net (fo=4, unplaced)         0.473    73.850    datapath/rf/div/temp_remainder[15]_59[2]
+                         LUT6 (Prop_lut6_I4_O)        0.124    73.974 r  datapath/rf/intermediate_remainder[30]_i_127/O
+                         net (fo=1, unplaced)         0.639    74.613    datapath/rf/intermediate_remainder[30]_i_127_n_0
+                         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.520    75.133 r  datapath/rf/intermediate_remainder_reg[30]_i_100/CO[3]
+                         net (fo=1, unplaced)         0.009    75.142    datapath/rf/intermediate_remainder_reg[30]_i_100_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    75.259 r  datapath/rf/intermediate_remainder_reg[30]_i_64/CO[3]
+                         net (fo=1, unplaced)         0.000    75.259    datapath/rf/intermediate_remainder_reg[30]_i_64_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    75.376 r  datapath/rf/intermediate_remainder_reg[30]_i_27/CO[3]
+                         net (fo=1, unplaced)         0.000    75.376    datapath/rf/intermediate_remainder_reg[30]_i_27_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    75.493 f  datapath/rf/intermediate_remainder_reg[30]_i_6/CO[3]
+                         net (fo=32, unplaced)        0.989    76.482    datapath/rf/intermediate_remainder_reg[30]_i_6_n_0
+                         LUT1 (Prop_lut1_I0_O)        0.124    76.606 r  datapath/rf/intermediate_quotient[0]_i_1/O
+                         net (fo=1, unplaced)         0.000    76.606    datapath/div/intermediate_quotient_reg[15]_1[0]
+                         FDCE                                         r  datapath/div/intermediate_quotient_reg[0]/D
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk_proc_clk_wiz_0 rise edge)
+                                                     76.923    76.923 r  
+    Y9                                                0.000    76.923 r  CLOCK_100MHz (IN)
+                         net (fo=0)                   0.000    76.923    mmcm/CLOCK_100MHz
+    Y9                   IBUF (Prop_ibuf_I_O)         1.420    78.343 r  mmcm/clkin1_ibufg/O
+                         net (fo=1, unplaced)         0.439    78.782    mmcm/clk_in1_clk_wiz_0
+                         MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                     -5.378    73.404 r  mmcm/mmcm_adv_inst/CLKOUT0
+                         net (fo=2, unplaced)         0.439    73.843    mmcm/clk_proc_clk_wiz_0
+                         BUFGCTRL (Prop_bufgctrl_I0_O)
+                                                      0.091    73.934 r  mmcm/clkout1_buf/O
+                         net (fo=1215, unplaced)      0.439    74.373    datapath/div/clock_processor
+                         FDCE                                         r  datapath/div/intermediate_quotient_reg[0]/C
+                         clock pessimism              0.481    74.854    
+                         clock uncertainty           -0.221    74.633    
+                         FDCE (Setup_fdce_C_D)        0.044    74.677    datapath/div/intermediate_quotient_reg[0]
+  -------------------------------------------------------------------
+                         required time                         74.677    
+                         arrival time                         -76.606    
+  -------------------------------------------------------------------
+                         slack                                 -1.929    
+
+
+
+
+
+Min Delay Paths
+--------------------------------------------------------------------------------------
+Slack (MET) :             19.585ns  (arrival time - required time)
+  Source:                 mem/mem_reg_1_1/CLKBWRCLK
+                            (rising edge-triggered cell RAMB36E1 clocked by clk_mem_clk_wiz_0  {rise@19.231ns fall@57.692ns period=76.923ns})
+  Destination:            datapath/current_state_reg[0]/D
+                            (rising edge-triggered cell FDCE clocked by clk_proc_clk_wiz_0  {rise@0.000ns fall@38.462ns period=76.923ns})
+  Path Group:             clk_proc_clk_wiz_0
+  Path Type:              Hold (Min at Fast Process Corner)
+  Requirement:            -19.231ns  (clk_proc_clk_wiz_0 rise@0.000ns - clk_mem_clk_wiz_0 rise@19.231ns)
+  Data Path Delay:        0.967ns  (logic 0.630ns (65.143%)  route 0.337ns (34.856%))
+  Logic Levels:           1  (LUT5=1)
+  Clock Path Skew:        0.293ns (DCD - SCD - CPR)
+    Destination Clock Delay (DCD):    -1.158ns
+    Source Clock Delay      (SCD):    -1.150ns = ( 18.081 - 19.231 ) 
+    Clock Pessimism Removal (CPR):    -0.301ns
+  Clock Uncertainty:      0.221ns  ((TSJ^2 + DJ^2)^1/2) / 2 + PE
+    Total System Jitter     (TSJ):    0.071ns
+    Discrete Jitter          (DJ):    0.189ns
+    Phase Error              (PE):    0.120ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk_mem_clk_wiz_0 rise edge)
+                                                     19.231    19.231 r  
+    Y9                                                0.000    19.231 r  CLOCK_100MHz (IN)
+                         net (fo=0)                   0.000    19.231    mmcm/CLOCK_100MHz
+    Y9                   IBUF (Prop_ibuf_I_O)         0.258    19.489 r  mmcm/clkin1_ibufg/O
+                         net (fo=1, unplaced)         0.114    19.603    mmcm/clk_in1_clk_wiz_0
+                         MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT1)
+                                                     -1.776    17.827 r  mmcm/mmcm_adv_inst/CLKOUT1
+                         net (fo=2, unplaced)         0.114    17.941    mmcm/clk_mem_clk_wiz_0
+                         BUFGCTRL (Prop_bufgctrl_I0_O)
+                                                      0.026    17.967 r  mmcm/clkout2_buf/O
+                         net (fo=736, unplaced)       0.114    18.081    mem/clock_mem
+                         RAMB36E1                                     r  mem/mem_reg_1_1/CLKBWRCLK
+  -------------------------------------------------------------------    -------------------
+                         RAMB36E1 (Prop_ramb36e1_CLKBWRCLK_DOBDO[0])
+                                                      0.585    18.666 f  mem/mem_reg_1_1/DOBDO[0]
+                         net (fo=280, unplaced)       0.337    19.003    datapath/insn_from_imem[5]
+                         LUT5 (Prop_lut5_I4_O)        0.045    19.048 r  datapath/current_state[0]_i_1/O
+                         net (fo=1, unplaced)         0.000    19.048    datapath/current_state[0]_i_1_n_0
+                         FDCE                                         r  datapath/current_state_reg[0]/D
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk_proc_clk_wiz_0 rise edge)
+                                                      0.000     0.000 r  
+    Y9                                                0.000     0.000 r  CLOCK_100MHz (IN)
+                         net (fo=0)                   0.000     0.000    mmcm/CLOCK_100MHz
+    Y9                   IBUF (Prop_ibuf_I_O)         0.446     0.446 r  mmcm/clkin1_ibufg/O
+                         net (fo=1, unplaced)         0.259     0.705    mmcm/clk_in1_clk_wiz_0
+                         MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                     -2.410    -1.705 r  mmcm/mmcm_adv_inst/CLKOUT0
+                         net (fo=2, unplaced)         0.259    -1.446    mmcm/clk_proc_clk_wiz_0
+                         BUFGCTRL (Prop_bufgctrl_I0_O)
+                                                      0.029    -1.417 r  mmcm/clkout1_buf/O
+                         net (fo=1215, unplaced)      0.259    -1.158    datapath/clock_processor
+                         FDCE                                         r  datapath/current_state_reg[0]/C
+                         clock pessimism              0.301    -0.857    
+                         clock uncertainty            0.221    -0.636    
+                         FDCE (Hold_fdce_C_D)         0.099    -0.537    datapath/current_state_reg[0]
+  -------------------------------------------------------------------
+                         required time                          0.537    
+                         arrival time                          19.048    
+  -------------------------------------------------------------------
+                         slack                                 19.585    
+
+
+
+
+
