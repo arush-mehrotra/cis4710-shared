@@ -56,6 +56,21 @@ module RegFile (
   logic [`REG_SIZE] regs[NumRegs];
 
   // TODO: your code here
+  assign regs[0] = 32'd0;
+  assign rs1_data = regs[rs1];
+  assign rs2_data = regs[rs2];
+
+  generate for (i = 0; i < NumRegs; i++) begin: g_loop
+    always_ff @(posedge clk) begin
+      if (rst) begin
+        regs[i] <= 32'd0;
+      end else begin
+        if (we && rd == i && rd != 0) begin
+          regs[i] <= rd_data;
+        end
+      end
+    end
+  end endgenerate
 
 endmodule
 
@@ -96,6 +111,32 @@ typedef struct packed {
   cycle_status_e cycle_status;
 } stage_decode_t;
 
+/** state at the start of Execute stage */
+typedef struct packed {
+  logic [`REG_SIZE] pc;
+  logic [`INSN_SIZE] insn;
+  cycle_status_e cycle_status;
+  logic [`REG_SIZE] rs1_data;
+  logic [`REG_SIZE] rs2_data;
+} stage_execute_t;
+
+/** state at the start of Memory stage */
+typedef struct packed {
+  logic [`REG_SIZE] pc;
+  logic [`INSN_SIZE] insn;
+  cycle_status_e cycle_status;
+  logic [`REG_SIZE] alu_result;
+} stage_memory_t;
+
+/** state at the start of Writeback stage */
+typedef struct packed {
+  logic [`REG_SIZE] pc;
+  logic [`INSN_SIZE] insn;
+  cycle_status_e cycle_status;
+  logic [`REG_SIZE] alu_result;
+} stage_writeback_t;
+
+
 
 module DatapathPipelined (
     input wire clk,
@@ -119,18 +160,18 @@ module DatapathPipelined (
 );
 
   // opcodes - see section 19 of RiscV spec
-  localparam bit [`OPCODE_SIZE] OpcodeLoad = 7'b00_000_11;
-  localparam bit [`OPCODE_SIZE] OpcodeStore = 7'b01_000_11;
-  localparam bit [`OPCODE_SIZE] OpcodeBranch = 7'b11_000_11;
-  localparam bit [`OPCODE_SIZE] OpcodeJalr = 7'b11_001_11;
-  localparam bit [`OPCODE_SIZE] OpcodeMiscMem = 7'b00_011_11;
-  localparam bit [`OPCODE_SIZE] OpcodeJal = 7'b11_011_11;
+  // localparam bit [`OPCODE_SIZE] OpcodeLoad = 7'b00_000_11;
+  // localparam bit [`OPCODE_SIZE] OpcodeStore = 7'b01_000_11;
+  // localparam bit [`OPCODE_SIZE] OpcodeBranch = 7'b11_000_11;
+  // localparam bit [`OPCODE_SIZE] OpcodeJalr = 7'b11_001_11;
+  // localparam bit [`OPCODE_SIZE] OpcodeMiscMem = 7'b00_011_11;
+  // localparam bit [`OPCODE_SIZE] OpcodeJal = 7'b11_011_11;
 
-  localparam bit [`OPCODE_SIZE] OpcodeRegImm = 7'b00_100_11;
-  localparam bit [`OPCODE_SIZE] OpcodeRegReg = 7'b01_100_11;
-  localparam bit [`OPCODE_SIZE] OpcodeEnviron = 7'b11_100_11;
+  // localparam bit [`OPCODE_SIZE] OpcodeRegImm = 7'b00_100_11;
+  // localparam bit [`OPCODE_SIZE] OpcodeRegReg = 7'b01_100_11;
+  // localparam bit [`OPCODE_SIZE] OpcodeEnviron = 7'b11_100_11;
 
-  localparam bit [`OPCODE_SIZE] OpcodeAuipc = 7'b00_101_11;
+  // localparam bit [`OPCODE_SIZE] OpcodeAuipc = 7'b00_101_11;
   localparam bit [`OPCODE_SIZE] OpcodeLui = 7'b01_101_11;
 
   // cycle counter, not really part of any stage but useful for orienting within GtkWave
@@ -210,6 +251,276 @@ module DatapathPipelined (
 
   // TODO: your code here, though you will also need to modify some of the code above
   // TODO: the testbench requires that your register file instance is named `rf`
+
+  // instatiate register file data
+  logic [`REG_SIZE] regfile_rs1_data;
+  logic [`REG_SIZE] regfile_rs2_data;
+  logic [`REG_SIZE] regfile_rd_data;
+
+  // decode instruction
+  // components of the instruction
+  wire [6:0] d_insn_funct7;
+  wire [4:0] d_insn_rs2;
+  wire [4:0] d_insn_rs1;
+  wire [2:0] d_insn_funct3;
+  wire [4:0] d_insn_rd;
+  wire [`OPCODE_SIZE] d_insn_opcode;
+
+  // split R-type instruction - see section 2.2 of RiscV spec
+  assign {d_insn_funct7, d_insn_rs2, d_insn_rs1, d_insn_funct3, d_insn_rd, d_insn_opcode} = decode_state.insn;
+
+  // setup for I, S, B & J type instructions
+  // I - short immediates and loads
+  wire [11:0] d_imm_i;
+  assign d_imm_i = decode_state.insn[31:20];
+  wire [ 4:0] d_imm_shamt = decode_state.insn[24:20];
+
+  // S - stores
+  wire [11:0] d_imm_s;
+  assign d_imm_s[11:5] = d_insn_funct7, d_imm_s[4:0] = d_insn_rd;
+
+  // B - conditionals
+  wire [12:0] d_imm_b;
+  assign {d_imm_b[12], d_imm_b[10:5]} = d_insn_funct7, {d_imm_b[4:1], d_imm_b[11]} = d_insn_rd, d_imm_b[0] = 1'b0;
+
+  // J - unconditional jumps
+  wire [20:0] d_imm_j;
+  assign {d_imm_j[20], d_imm_j[10:1], d_imm_j[11], d_imm_j[19:12], d_imm_j[0]} = {decode_state.insn[31:12], 1'b0};
+
+  wire [`REG_SIZE] d_imm_i_sext = {{20{d_imm_i[11]}}, d_imm_i[11:0]};
+  wire [`REG_SIZE] d_imm_s_sext = {{20{d_imm_s[11]}}, d_imm_s[11:0]};
+  wire [`REG_SIZE] d_imm_b_sext = {{19{d_imm_b[12]}}, d_imm_b[12:0]};
+  wire [`REG_SIZE] d_imm_j_sext = {{11{d_imm_j[20]}}, d_imm_j[20:0]};
+
+  logic regfile_we;
+
+  // instatiate register file
+  RegFile rf (
+      .clk(clk),
+      .rst(rst),
+      .we(regfile_we),
+      .rd(w_insn_rd),
+      .rs1(d_insn_rs1),
+      .rs2(d_insn_rs2),
+      .rd_data(regfile_rd_data),
+      .rs1_data(regfile_rs1_data),
+      .rs2_data(regfile_rs2_data)
+  );
+
+  logic illegal_insn;
+
+  // setup for register file write
+  always_comb begin
+    illegal_insn = 1'b0;
+    halt = 1'b0;
+    case (d_insn_opcode)
+      OpcodeLui: begin
+
+      end
+      default: begin
+      end
+    endcase
+
+
+  end
+
+
+
+
+  /*****************/
+  /* EXECUTE STAGE */
+  /*****************/
+  stage_execute_t execute_state;
+  always_ff @(posedge clk) begin
+    if (rst) begin
+      execute_state <= '{
+        pc: 0,
+        insn: 0,
+        cycle_status: CYCLE_RESET,
+        rs1_data: 0,
+        rs2_data: 0
+      };
+    end else begin
+      begin
+        execute_state <= '{
+          pc: decode_state.pc,
+          insn: decode_state.insn,
+          cycle_status: decode_state.cycle_status,
+          rs1_data: regfile_rs1_data,
+          rs2_data: regfile_rs2_data
+        };
+      end
+    end
+  end
+  wire [255:0] e_disasm;
+  Disasm #(
+      .PREFIX("E")
+  ) disasm_1execute (
+      .insn  (execute_state.insn),
+      .disasm(e_disasm)
+  );
+
+  // components of the instruction
+  wire [6:0] e_insn_funct7;
+  wire [4:0] e_insn_rs2;
+  wire [4:0] e_insn_rs1;
+  wire [2:0] e_insn_funct3;
+  wire [4:0] e_insn_rd;
+  wire [`OPCODE_SIZE] e_insn_opcode;
+
+  // split R-type instruction - see section 2.2 of RiscV spec
+  assign {e_insn_funct7, e_insn_rs2, e_insn_rs1, e_insn_funct3, e_insn_rd, e_insn_opcode} = execute_state.insn;
+
+  // setup for I, S, B & J type instructions
+  // I - short immediates and loads
+  wire [11:0] e_imm_i;
+  assign e_imm_i = execute_state.insn[31:20];
+  wire [ 4:0] e_imm_shamt = execute_state.insn[24:20];
+
+  // S - stores
+  wire [11:0] e_imm_s;
+  assign e_imm_s[11:5] = e_insn_funct7, e_imm_s[4:0] = e_insn_rd;
+
+  // B - conditionals
+  wire [12:0] e_imm_b;
+  assign {e_imm_b[12], e_imm_b[10:5]} = e_insn_funct7, {e_imm_b[4:1], e_imm_b[11]} = e_insn_rd, e_imm_b[0] = 1'b0;
+
+  // J - unconditional jumps
+  wire [20:0] e_imm_j;
+  assign {e_imm_j[20], e_imm_j[10:1], e_imm_j[11], e_imm_j[19:12], e_imm_j[0]} = {execute_state.insn[31:12], 1'b0};
+
+  wire [`REG_SIZE] e_imm_i_sext = {{20{e_imm_i[11]}}, e_imm_i[11:0]};
+  wire [`REG_SIZE] e_imm_s_sext = {{20{e_imm_s[11]}}, e_imm_s[11:0]};
+  wire [`REG_SIZE] e_imm_b_sext = {{19{e_imm_b[12]}}, e_imm_b[12:0]};
+  wire [`REG_SIZE] e_imm_j_sext = {{11{e_imm_j[20]}}, e_imm_j[20:0]};
+
+  // result of ALU
+  logic[31:0] e_result;
+
+  always_comb begin
+    case (e_insn_opcode)
+      OpcodeLui: begin
+        e_result = {execute_state.insn[31:12], 12'b0};
+      end
+      default: begin
+      end
+    endcase
+  end
+
+  /****************/
+  /* MEMORY STAGE */
+  /****************/
+  stage_memory_t memory_state;
+  always_ff @(posedge clk) begin
+    if (rst) begin
+      memory_state <= '{
+        pc: 0,
+        insn: 0,
+        cycle_status: CYCLE_RESET,
+        alu_result: 0
+      };
+    end else begin
+      begin
+        memory_state <= '{
+          pc: execute_state.pc,
+          insn: execute_state.insn,
+          cycle_status:  execute_state.cycle_status,
+          alu_result: e_result
+        };
+      end
+    end
+  end
+  wire [255:0] m_disasm;
+  Disasm #(
+      .PREFIX("M")
+  ) disasm_1memory (
+      .insn  (memory_state.insn),
+      .disasm(m_disasm)
+  );
+
+
+  /*******************/
+  /* WRITEBACK STAGE */
+  /*******************/
+  stage_writeback_t writeback_state;
+  always_ff @(posedge clk) begin
+    if (rst) begin
+      writeback_state <= '{
+        pc: 0,
+        insn: 0,
+        cycle_status: CYCLE_RESET,
+        alu_result: 0
+      };
+    end else begin
+      begin
+        writeback_state <= '{
+          pc: memory_state.pc,
+          insn: memory_state.insn,
+          cycle_status:  memory_state.cycle_status,
+          alu_result: memory_state.alu_result
+        };
+      end
+    end
+  end
+  wire [255:0] w_disasm;
+  Disasm #(
+      .PREFIX("W")
+  ) disasm_1writeback (
+      .insn  (writeback_state.insn),
+      .disasm(w_disasm)
+  );
+
+  // components of the instruction
+  wire [6:0] w_insn_funct7;
+  wire [4:0] w_insn_rs2;
+  wire [4:0] w_insn_rs1;
+  wire [2:0] w_insn_funct3;
+  wire [4:0] w_insn_rd;
+  wire [`OPCODE_SIZE] w_insn_opcode;
+
+  // split R-type instruction - see section 2.2 of RiscV spec
+  assign {w_insn_funct7, w_insn_rs2, w_insn_rs1, w_insn_funct3, w_insn_rd, w_insn_opcode} = writeback_state.insn;
+
+  // setup for I, S, B & J type instructions
+  // I - short immediates and loads
+  wire [11:0] w_imm_i;
+  assign w_imm_i = writeback_state.insn[31:20];
+  wire [4:0] w_imm_shamt = writeback_state.insn[24:20];
+
+  // S - stores
+  wire [11:0] w_imm_s;
+  assign w_imm_s[11:5] = w_insn_funct7, w_imm_s[4:0] = w_insn_rd;
+
+  // B - conditionals
+  wire [12:0] w_imm_b;
+  assign {w_imm_b[12], w_imm_b[10:5]} = w_insn_funct7, {w_imm_b[4:1], w_imm_b[11]} = w_insn_rd, w_imm_b[0] = 1'b0;
+
+  // J - unconditional jumps
+  wire [20:0] w_imm_j;
+  assign {w_imm_j[20], w_imm_j[10:1], w_imm_j[11], w_imm_j[19:12], w_imm_j[0]} = {writeback_state.insn[31:12], 1'b0};
+
+  wire [`REG_SIZE] w_imm_i_sext = {{20{w_imm_i[11]}}, w_imm_i[11:0]};
+  wire [`REG_SIZE] w_imm_s_sext = {{20{w_imm_s[11]}}, w_imm_s[11:0]};
+  wire [`REG_SIZE] w_imm_b_sext = {{19{w_imm_b[12]}}, w_imm_b[12:0]};
+  wire [`REG_SIZE] w_imm_j_sext = {{11{w_imm_j[20]}}, w_imm_j[20:0]};
+
+  always_comb begin
+    case (w_insn_opcode)
+      OpcodeLui: begin
+        regfile_rd_data = writeback_state.alu_result;
+        regfile_we = 1;
+      end
+      default: begin
+      end
+    endcase
+  end
+
+  assign trace_writeback_pc = writeback_state.pc;
+  assign trace_writeback_insn = writeback_state.insn;
+  assign trace_writeback_cycle_status = writeback_state.cycle_status;
+
+
+
 
 endmodule
 
