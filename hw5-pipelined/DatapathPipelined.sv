@@ -167,8 +167,8 @@ module DatapathPipelined (
   // localparam bit [`OPCODE_SIZE] OpcodeMiscMem = 7'b00_011_11;
   // localparam bit [`OPCODE_SIZE] OpcodeJal = 7'b11_011_11;
 
-  // localparam bit [`OPCODE_SIZE] OpcodeRegImm = 7'b00_100_11;
-  // localparam bit [`OPCODE_SIZE] OpcodeRegReg = 7'b01_100_11;
+  localparam bit [`OPCODE_SIZE] OpcodeRegImm = 7'b00_100_11;
+  localparam bit [`OPCODE_SIZE] OpcodeRegReg = 7'b01_100_11;
   // localparam bit [`OPCODE_SIZE] OpcodeEnviron = 7'b11_100_11;
 
   // localparam bit [`OPCODE_SIZE] OpcodeAuipc = 7'b00_101_11;
@@ -317,11 +317,12 @@ module DatapathPipelined (
       OpcodeLui: begin
 
       end
+      OpcodeRegImm: begin
+
+      end
       default: begin
       end
     endcase
-
-
   end
 
 
@@ -397,10 +398,48 @@ module DatapathPipelined (
   // result of ALU
   logic[31:0] e_result;
 
+  logic[31:0] e_bypass_rs1; 
+  logic[31:0] e_bypass_rs2; 
+
   always_comb begin
+    // MX bypass logic
+    if (e_insn_rs1 == m_insn_rd) begin
+      e_bypass_rs1 = memory_state.alu_result;
+    end else begin
+      e_bypass_rs1 = execute_state.rs1_data;
+    end
+    if (e_insn_rs2 == m_insn_rd) begin
+      e_bypass_rs2 = memory_state.alu_result;
+    end else begin
+      e_bypass_rs2 = execute_state.rs2_data;
+    end
     case (e_insn_opcode)
       OpcodeLui: begin
         e_result = {execute_state.insn[31:12], 12'b0};
+      end
+      OpcodeRegImm: begin
+        case (execute_state.insn[14:12])
+          // addi
+          3'b000: begin
+            e_result = e_bypass_rs1 + e_imm_i_sext;
+          end
+          default: begin
+          end
+        endcase
+      end
+      OpcodeRegReg: begin
+        case (execute_state.insn[14:12])
+          // add & sub
+          3'b000: begin
+            if (execute_state.insn[31:25] == 7'b0) begin
+              e_result = e_bypass_rs1 + e_bypass_rs2;
+            end else begin
+              e_result = e_bypass_rs1 - e_bypass_rs2;
+            end
+          end
+          default: begin
+          end
+        endcase
       end
       default: begin
       end
@@ -437,6 +476,40 @@ module DatapathPipelined (
       .insn  (memory_state.insn),
       .disasm(m_disasm)
   );
+
+  // components of the instruction
+  wire [6:0] m_insn_funct7;
+  wire [4:0] m_insn_rs2;
+  wire [4:0] m_insn_rs1;
+  wire [2:0] m_insn_funct3;
+  wire [4:0] m_insn_rd;
+  wire [`OPCODE_SIZE] m_insn_opcode;
+
+  // split R-type instruction - see section 2.2 of RiscV spec
+  assign {m_insn_funct7, m_insn_rs2, m_insn_rs1, m_insn_funct3, m_insn_rd, m_insn_opcode} = memory_state.insn;
+
+  // setup for I, S, B & J type instructions
+  // I - short immediates and loads
+  wire [11:0] m_imm_i;
+  assign m_imm_i = memory_state.insn[31:20];
+  wire [4:0] m_imm_shamt = memory_state.insn[24:20];
+
+  // S - stores
+  wire [11:0] m_imm_s;
+  assign m_imm_s[11:5] = m_insn_funct7, m_imm_s[4:0] = m_insn_rd;
+
+  // B - conditionals
+  wire [12:0] m_imm_b;
+  assign {m_imm_b[12], m_imm_b[10:5]} = m_insn_funct7, {m_imm_b[4:1], m_imm_b[11]} = m_insn_rd, m_imm_b[0] = 1'b0;
+
+  // J - unconditional jumps
+  wire [20:0] m_imm_j;
+  assign {m_imm_j[20], m_imm_j[10:1], m_imm_j[11], m_imm_j[19:12], m_imm_j[0]} = {memory_state.insn[31:12], 1'b0};
+
+  wire [`REG_SIZE] m_imm_i_sext = {{20{m_imm_i[11]}}, m_imm_i[11:0]};
+  wire [`REG_SIZE] m_imm_s_sext = {{20{m_imm_s[11]}}, m_imm_s[11:0]};
+  wire [`REG_SIZE] m_imm_b_sext = {{19{m_imm_b[12]}}, m_imm_b[12:0]};
+  wire [`REG_SIZE] m_imm_j_sext = {{11{m_imm_j[20]}}, m_imm_j[20:0]};
 
 
   /*******************/
@@ -509,6 +582,28 @@ module DatapathPipelined (
       OpcodeLui: begin
         regfile_rd_data = writeback_state.alu_result;
         regfile_we = 1;
+      end
+      OpcodeRegImm: begin
+        case (writeback_state.insn[14:12])
+          // addi
+          3'b000: begin
+            regfile_rd_data = writeback_state.alu_result;
+            regfile_we = 1;
+          end
+          default: begin
+          end
+        endcase
+      end
+      OpcodeRegReg: begin
+        case (writeback_state.insn[14:12])
+          // add & sub
+          3'b000: begin
+            regfile_rd_data = writeback_state.alu_result;
+            regfile_we = 1;
+          end
+          default: begin
+          end
+        endcase
       end
       default: begin
       end
