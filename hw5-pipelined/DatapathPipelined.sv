@@ -401,18 +401,21 @@ module DatapathPipelined (
   logic[31:0] e_bypass_rs1; 
   logic[31:0] e_bypass_rs2; 
 
+// MX bypass logic
   always_comb begin
-    // MX bypass logic
-    if (e_insn_rs1 == m_insn_rd) begin
+    if ((e_insn_rs1 == m_insn_rd) && m_insn_rd != 0) begin
       e_bypass_rs1 = memory_state.alu_result;
     end else begin
       e_bypass_rs1 = execute_state.rs1_data;
     end
-    if (e_insn_rs2 == m_insn_rd) begin
+    if ((e_insn_rs2 == m_insn_rd) && m_insn_rd != 0) begin
       e_bypass_rs2 = memory_state.alu_result;
     end else begin
       e_bypass_rs2 = execute_state.rs2_data;
     end
+  end
+
+  always_comb begin
     case (e_insn_opcode)
       OpcodeLui: begin
         e_result = {execute_state.insn[31:12], 12'b0};
@@ -578,6 +581,7 @@ module DatapathPipelined (
   wire [`REG_SIZE] w_imm_j_sext = {{11{w_imm_j[20]}}, w_imm_j[20:0]};
 
   always_comb begin
+    regfile_we = 1'b0;
     case (w_insn_opcode)
       OpcodeLui: begin
         regfile_rd_data = writeback_state.alu_result;
