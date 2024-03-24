@@ -178,7 +178,7 @@ module DatapathPipelined (
   // opcodes - see section 19 of RiscV spec
   // localparam bit [`OPCODE_SIZE] OpcodeLoad = 7'b00_000_11;
   // localparam bit [`OPCODE_SIZE] OpcodeStore = 7'b01_000_11;
-  // localparam bit [`OPCODE_SIZE] OpcodeBranch = 7'b11_000_11;
+  localparam bit [`OPCODE_SIZE] OpcodeBranch = 7'b11_000_11;
   // localparam bit [`OPCODE_SIZE] OpcodeJalr = 7'b11_001_11;
   // localparam bit [`OPCODE_SIZE] OpcodeMiscMem = 7'b00_011_11;
   // localparam bit [`OPCODE_SIZE] OpcodeJal = 7'b11_011_11;
@@ -217,7 +217,11 @@ module DatapathPipelined (
       f_cycle_status <= CYCLE_NO_STALL;
     end else begin
       f_cycle_status <= CYCLE_NO_STALL;
-      f_pc_current <= f_pc_current + 4;
+      if (branch_taken > 0) begin
+        f_pc_current <= branch_taken;
+      end else begin
+        f_pc_current <= f_pc_current + 4;
+      end
     end
   end
   // send PC to imem
@@ -252,7 +256,7 @@ module DatapathPipelined (
         decode_state <= '{
           pc: f_pc_current,
           insn: f_insn,
-          cycle_status: f_cycle_status
+          cycle_status: branch_taken > 0 ? CYCLE_TAKEN_BRANCH : f_cycle_status
         };
       end
     end
@@ -329,17 +333,21 @@ module DatapathPipelined (
   always_comb begin
     illegal_insn = 1'b0;
     halt = 1'b0;
-    case (d_insn_opcode)
-      OpcodeLui: begin
-      end
-      OpcodeRegImm: begin
-      end
-      OpcodeRegReg: begin
-      end
-      default: begin
-        illegal_insn = 1'b1;
-      end
-    endcase
+    if (decode_state.cycle_status == CYCLE_NO_STALL) begin
+      case (d_insn_opcode)
+        OpcodeLui: begin
+        end
+        OpcodeRegImm: begin
+        end
+        OpcodeRegReg: begin
+        end
+        OpcodeBranch: begin
+        end
+        default: begin
+          illegal_insn = 1'b1;
+        end
+      endcase
+    end
   end
 
   /*****************/
@@ -360,7 +368,7 @@ module DatapathPipelined (
         execute_state <= '{
           pc: decode_state.pc,
           insn: decode_state.insn,
-          cycle_status: decode_state.cycle_status,
+          cycle_status: branch_taken > 0 ? CYCLE_TAKEN_BRANCH : decode_state.cycle_status,
           rs1_data: regfile_rs1_data,
           rs2_data: regfile_rs2_data
         };
@@ -418,156 +426,210 @@ module DatapathPipelined (
   // multiply
   logic[63:0] product;
 
+  // branch
+  logic[31:0] branch_taken;
+
   // MX bypass logic
   always_comb begin
-    if ((e_insn_rs1 == m_insn_rd) && m_insn_rd != 0) begin
-      e_bypass_rs1 = memory_state.alu_result;
-    end else begin
-      // WX bypass logic
-      if ((e_insn_rs1 == w_insn_rd) && w_insn_rd != 0) begin
-        e_bypass_rs1 = writeback_state.alu_result;
+    e_bypass_rs1 = 0;
+    e_bypass_rs2 = 0;
+    if (execute_state.cycle_status == CYCLE_NO_STALL) begin
+      if ((e_insn_rs1 == m_insn_rd) && m_insn_rd != 0) begin
+        e_bypass_rs1 = memory_state.alu_result;
       end else begin
-        e_bypass_rs1 = execute_state.rs1_data;
-      end
-    end 
-    if ((e_insn_rs2 == m_insn_rd) && m_insn_rd != 0) begin
-      e_bypass_rs2 = memory_state.alu_result;
-    end else begin
-      // WX bypass logic
-      if ((e_insn_rs2 == w_insn_rd) && w_insn_rd != 0) begin
-        e_bypass_rs2 = writeback_state.alu_result;
+        // WX bypass logic
+        if ((e_insn_rs1 == w_insn_rd) && w_insn_rd != 0) begin
+          e_bypass_rs1 = writeback_state.alu_result;
+        end else begin
+          e_bypass_rs1 = execute_state.rs1_data;
+        end
+      end 
+      if ((e_insn_rs2 == m_insn_rd) && m_insn_rd != 0) begin
+        e_bypass_rs2 = memory_state.alu_result;
       end else begin
-        e_bypass_rs2 = execute_state.rs2_data;
+        // WX bypass logic
+        if ((e_insn_rs2 == w_insn_rd) && w_insn_rd != 0) begin
+          e_bypass_rs2 = writeback_state.alu_result;
+        end else begin
+          e_bypass_rs2 = execute_state.rs2_data;
+        end
       end
     end
   end
 
   always_comb begin
-    case (e_insn_opcode)
-      OpcodeLui: begin
-        e_result = {execute_state.insn[31:12], 12'b0};
-      end
-      OpcodeRegImm: begin
-        case (execute_state.insn[14:12])
-          // addi
-          3'b000: begin
-            e_result = e_bypass_rs1 + e_imm_i_sext;
-          end
-          // slti
-          3'b010: begin
-            e_result = ($signed(e_bypass_rs1) < $signed(e_imm_i_sext)) ? 32'd1 : 32'd0;
-          end
-          // sltiu
-          3'b011: begin
-            e_result = (e_bypass_rs1 < e_imm_i_sext) ? 32'd1 : 32'd0;
-          end
-          // xori
-          3'b100: begin
-            e_result = e_bypass_rs1 ^ e_imm_i_sext;
-          end
-          // ori
-          3'b110: begin
-            e_result = e_bypass_rs1 | e_imm_i_sext;
-          end
-          // andi
-          3'b111: begin
-            e_result = e_bypass_rs1 & e_imm_i_sext;
-          end
-          // slli
-          3'b001: begin
-            e_result = e_bypass_rs1 << e_imm_shamt;
-          end
-          // srli & srai
-          3'b101: begin
-            if (execute_state.insn[31:25] == 7'd0) begin
-              e_result = e_bypass_rs1 >> e_imm_shamt;
-            end else if (execute_state.insn[31:25] == 7'b0100000) begin
-              e_result = $signed(e_bypass_rs1) >>> e_imm_shamt;
+    branch_taken = 0;
+    e_result = 0;
+    product = 0;
+    if (execute_state.cycle_status == CYCLE_NO_STALL) begin
+      case (e_insn_opcode)
+        OpcodeLui: begin
+          e_result = {execute_state.insn[31:12], 12'b0};
+        end
+        OpcodeRegImm: begin
+          case (execute_state.insn[14:12])
+            // addi
+            3'b000: begin
+              e_result = e_bypass_rs1 + e_imm_i_sext;
             end
-          end
-          default: begin
-          end
-        endcase
-      end
-      OpcodeRegReg: begin
-        case (execute_state.insn[14:12])
-          // add & sub & mul
-          3'b000: begin
-            // add
-            if (execute_state.insn[31:25] == 7'b0) begin
-              e_result = e_bypass_rs1 + e_bypass_rs2;
-            // sub
-            end else if (execute_state.insn[31:25] == 7'b0100000) begin
-              e_result = e_bypass_rs1 - e_bypass_rs2;
-            // mul
-            end else if (execute_state.insn[31:25] == 7'd1) begin
-              product = {{32{1'b0}}, e_bypass_rs1} * {{32{1'b0}}, e_bypass_rs2};
-              e_result = product[31:0];
+            // slti
+            3'b010: begin
+              e_result = ($signed(e_bypass_rs1) < $signed(e_imm_i_sext)) ? 32'd1 : 32'd0;
             end
-          end
-          // sll & mulh
-          3'b001: begin
-            // sll
-            if (execute_state.insn[31:25] == 7'd0) begin
-              e_result = e_bypass_rs1 << e_bypass_rs2[4:0];
+            // sltiu
+            3'b011: begin
+              e_result = (e_bypass_rs1 < e_imm_i_sext) ? 32'd1 : 32'd0;
             end
-            // mulh
-            else if (execute_state.insn[31:25] == 7'd1) begin
-              product = $signed({{32{e_bypass_rs1[31]}}, e_bypass_rs1}) * $signed({{32{e_bypass_rs2[31]}}, e_bypass_rs2});
-              e_result = product[63:32];
+            // xori
+            3'b100: begin
+              e_result = e_bypass_rs1 ^ e_imm_i_sext;
             end
-          end
-          // slt & mulhsu
-          3'b010: begin
-            // slt
-            if (execute_state.insn[31:25] == 7'd0) begin
-              e_result = ($signed(e_bypass_rs1) < $signed(e_bypass_rs2)) ? 32'd1 : 32'd0;
+            // ori
+            3'b110: begin
+              e_result = e_bypass_rs1 | e_imm_i_sext;
             end
-            // mulhsu
-            else if (execute_state.insn[31:25] == 7'd1) begin
-              product = $signed({{32{e_bypass_rs1[31]}}, e_bypass_rs1}) * ({{32{1'b0}}, e_bypass_rs2});
-              e_result = product[63:32];
+            // andi
+            3'b111: begin
+              e_result = e_bypass_rs1 & e_imm_i_sext;
             end
-          end
-          // sltu & mulhu
-          3'b011: begin
-            // sltu
-            if (execute_state.insn[31:25] == 7'd0) begin
-              e_result = (e_bypass_rs1 < e_bypass_rs2) ? 32'd1 : 32'd0;
+            // slli
+            3'b001: begin
+              e_result = e_bypass_rs1 << e_imm_shamt;
             end
-            // mulhu
-            else if (execute_state.insn[31:25] == 7'd1) begin
-              product = ({{32{1'b0}}, e_bypass_rs1}) * ({{32{1'b0}}, e_bypass_rs2});
-              e_result = product[63:32];
+            // srli & srai
+            3'b101: begin
+              if (execute_state.insn[31:25] == 7'd0) begin
+                e_result = e_bypass_rs1 >> e_imm_shamt;
+              end else if (execute_state.insn[31:25] == 7'b0100000) begin
+                e_result = $signed(e_bypass_rs1) >>> e_imm_shamt;
+              end
             end
-          end
-          // xor
-          3'b100: begin
-            e_result = e_bypass_rs1 ^ e_bypass_rs2;
-          end
-          // srl & sra
-          3'b101: begin
-            if (execute_state.insn[31:25] == 7'd0) begin
-              e_result = e_bypass_rs1 >> e_bypass_rs2[4:0];
-            end else if (execute_state.insn[31:25] == 7'b0100000) begin
-              e_result = $signed(e_bypass_rs1) >>> e_bypass_rs2[4:0];
+            default: begin
             end
-          end
-          // or
-          3'b110: begin
-            e_result = e_bypass_rs1 | e_bypass_rs2;
-          end
-          // and
-          3'b111: begin
-            e_result = e_bypass_rs1 & e_bypass_rs2;
-          end
-          default: begin
-          end
-        endcase
-      end
-      default: begin
-      end
-    endcase
+          endcase
+        end
+        OpcodeRegReg: begin
+          case (execute_state.insn[14:12])
+            // add & sub & mul
+            3'b000: begin
+              // add
+              if (execute_state.insn[31:25] == 7'b0) begin
+                e_result = e_bypass_rs1 + e_bypass_rs2;
+              // sub
+              end else if (execute_state.insn[31:25] == 7'b0100000) begin
+                e_result = e_bypass_rs1 - e_bypass_rs2;
+              // mul
+              end else if (execute_state.insn[31:25] == 7'd1) begin
+                product = {{32{1'b0}}, e_bypass_rs1} * {{32{1'b0}}, e_bypass_rs2};
+                e_result = product[31:0];
+              end
+            end
+            // sll & mulh
+            3'b001: begin
+              // sll
+              if (execute_state.insn[31:25] == 7'd0) begin
+                e_result = e_bypass_rs1 << e_bypass_rs2[4:0];
+              end
+              // mulh
+              else if (execute_state.insn[31:25] == 7'd1) begin
+                product = $signed({{32{e_bypass_rs1[31]}}, e_bypass_rs1}) * $signed({{32{e_bypass_rs2[31]}}, e_bypass_rs2});
+                e_result = product[63:32];
+              end
+            end
+            // slt & mulhsu
+            3'b010: begin
+              // slt
+              if (execute_state.insn[31:25] == 7'd0) begin
+                e_result = ($signed(e_bypass_rs1) < $signed(e_bypass_rs2)) ? 32'd1 : 32'd0;
+              end
+              // mulhsu
+              else if (execute_state.insn[31:25] == 7'd1) begin
+                product = $signed({{32{e_bypass_rs1[31]}}, e_bypass_rs1}) * ({{32{1'b0}}, e_bypass_rs2});
+                e_result = product[63:32];
+              end
+            end
+            // sltu & mulhu
+            3'b011: begin
+              // sltu
+              if (execute_state.insn[31:25] == 7'd0) begin
+                e_result = (e_bypass_rs1 < e_bypass_rs2) ? 32'd1 : 32'd0;
+              end
+              // mulhu
+              else if (execute_state.insn[31:25] == 7'd1) begin
+                product = ({{32{1'b0}}, e_bypass_rs1}) * ({{32{1'b0}}, e_bypass_rs2});
+                e_result = product[63:32];
+              end
+            end
+            // xor
+            3'b100: begin
+              e_result = e_bypass_rs1 ^ e_bypass_rs2;
+            end
+            // srl & sra
+            3'b101: begin
+              if (execute_state.insn[31:25] == 7'd0) begin
+                e_result = e_bypass_rs1 >> e_bypass_rs2[4:0];
+              end else if (execute_state.insn[31:25] == 7'b0100000) begin
+                e_result = $signed(e_bypass_rs1) >>> e_bypass_rs2[4:0];
+              end
+            end
+            // or
+            3'b110: begin
+              e_result = e_bypass_rs1 | e_bypass_rs2;
+            end
+            // and
+            3'b111: begin
+              e_result = e_bypass_rs1 & e_bypass_rs2;
+            end
+            default: begin
+            end
+          endcase
+        end
+        OpcodeBranch: begin
+          case (execute_state.insn[14:12])
+            // beq
+            3'b000: begin
+              if (e_bypass_rs1 == e_bypass_rs2) begin
+                branch_taken = execute_state.pc + e_imm_b_sext;
+              end
+            end
+            // bne
+            3'b001: begin
+              if (e_bypass_rs1 != e_bypass_rs2) begin
+                branch_taken = execute_state.pc + e_imm_b_sext;
+              end
+            end
+            // blt
+            3'b100: begin
+              if ($signed(e_bypass_rs1) < $signed(e_bypass_rs2)) begin
+                branch_taken = execute_state.pc + e_imm_b_sext;
+              end
+            end
+            // bge
+            3'b101: begin
+              if ($signed(e_bypass_rs1) >= $signed(e_bypass_rs2)) begin
+                branch_taken = execute_state.pc + e_imm_b_sext;
+              end
+            end
+            // bltu
+            3'b110: begin
+              if (e_bypass_rs1 < e_bypass_rs2) begin
+                branch_taken = execute_state.pc + e_imm_b_sext;
+              end
+            end
+            // bgeu
+            3'b111: begin
+              if (e_bypass_rs1 >= e_bypass_rs2) begin
+                branch_taken = execute_state.pc + e_imm_b_sext;
+              end
+            end
+            default: begin
+            end
+          endcase
+        end
+        default: begin
+        end
+      endcase
+    end
   end
 
   /****************/
@@ -702,23 +764,25 @@ module DatapathPipelined (
   wire [`REG_SIZE] w_imm_j_sext = {{11{w_imm_j[20]}}, w_imm_j[20:0]};
 
   always_comb begin
-    regfile_we = 1'b0;
-    case (w_insn_opcode)
-      OpcodeLui: begin
-        regfile_rd_data = writeback_state.alu_result;
-        regfile_we = 1;
-      end
-      OpcodeRegImm: begin
-        regfile_rd_data = writeback_state.alu_result;
-        regfile_we = 1;
-      end
-      OpcodeRegReg: begin
-        regfile_rd_data = writeback_state.alu_result;
-        regfile_we = 1;
-      end
-      default: begin
-      end
-    endcase
+    if (writeback_state.cycle_status == CYCLE_NO_STALL) begin
+      regfile_we = 1'b0;
+      case (w_insn_opcode)
+        OpcodeLui: begin
+          regfile_rd_data = writeback_state.alu_result;
+          regfile_we = 1;
+        end
+        OpcodeRegImm: begin
+          regfile_rd_data = writeback_state.alu_result;
+          regfile_we = 1;
+        end
+        OpcodeRegReg: begin
+          regfile_rd_data = writeback_state.alu_result;
+          regfile_we = 1;
+        end
+        default: begin
+        end
+      endcase
+    end
   end
 
   assign trace_writeback_pc = writeback_state.pc;
