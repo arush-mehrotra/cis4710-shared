@@ -56,6 +56,37 @@ module RegFile (
   logic [`REG_SIZE] regs[NumRegs];
 
   // TODO: your code here
+  logic[31:0] rs1_bypass;
+  logic[31:0] rs2_bypass;
+
+  always_comb begin
+    if ((rs1 == rd) && rd != 0) begin
+      rs1_bypass = rd_data;
+    end else begin
+      rs1_bypass = regs[rs1];
+    end
+    if ((rs2 == rd) && rd != 0) begin
+      rs2_bypass = rd_data;
+    end else begin
+      rs2_bypass = regs[rs2];
+    end
+  end
+
+  assign regs[0] = 32'd0;
+  assign rs1_data = rs1_bypass;
+  assign rs2_data = rs2_bypass;
+
+  generate for (i = 0; i < NumRegs; i++) begin: g_loop
+    always_ff @(posedge clk) begin
+      if (rst) begin
+        regs[i] <= 32'd0;
+      end else begin
+        if (we && rd == i && rd != 0) begin
+          regs[i] <= rd_data;
+        end
+      end
+    end
+  end endgenerate
 
 endmodule
 
@@ -96,6 +127,32 @@ typedef struct packed {
   cycle_status_e cycle_status;
 } stage_decode_t;
 
+/** state at the start of Execute stage */
+typedef struct packed {
+  logic [`REG_SIZE] pc;
+  logic [`INSN_SIZE] insn;
+  cycle_status_e cycle_status;
+  logic [`REG_SIZE] rs1_data;
+  logic [`REG_SIZE] rs2_data;
+} stage_execute_t;
+
+/** state at the start of Memory stage */
+typedef struct packed {
+  logic [`REG_SIZE] pc;
+  logic [`INSN_SIZE] insn;
+  cycle_status_e cycle_status;
+  logic [`REG_SIZE] alu_result;
+} stage_memory_t;
+
+/** state at the start of Writeback stage */
+typedef struct packed {
+  logic [`REG_SIZE] pc;
+  logic [`INSN_SIZE] insn;
+  cycle_status_e cycle_status;
+  logic [`REG_SIZE] alu_result;
+} stage_writeback_t;
+
+
 
 module DatapathPipelined (
     input wire clk,
@@ -119,18 +176,18 @@ module DatapathPipelined (
 );
 
   // opcodes - see section 19 of RiscV spec
-  localparam bit [`OPCODE_SIZE] OpcodeLoad = 7'b00_000_11;
-  localparam bit [`OPCODE_SIZE] OpcodeStore = 7'b01_000_11;
+  // localparam bit [`OPCODE_SIZE] OpcodeLoad = 7'b00_000_11;
+  // localparam bit [`OPCODE_SIZE] OpcodeStore = 7'b01_000_11;
   localparam bit [`OPCODE_SIZE] OpcodeBranch = 7'b11_000_11;
-  localparam bit [`OPCODE_SIZE] OpcodeJalr = 7'b11_001_11;
-  localparam bit [`OPCODE_SIZE] OpcodeMiscMem = 7'b00_011_11;
-  localparam bit [`OPCODE_SIZE] OpcodeJal = 7'b11_011_11;
+  // localparam bit [`OPCODE_SIZE] OpcodeJalr = 7'b11_001_11;
+  // localparam bit [`OPCODE_SIZE] OpcodeMiscMem = 7'b00_011_11;
+  // localparam bit [`OPCODE_SIZE] OpcodeJal = 7'b11_011_11;
 
   localparam bit [`OPCODE_SIZE] OpcodeRegImm = 7'b00_100_11;
   localparam bit [`OPCODE_SIZE] OpcodeRegReg = 7'b01_100_11;
   localparam bit [`OPCODE_SIZE] OpcodeEnviron = 7'b11_100_11;
 
-  localparam bit [`OPCODE_SIZE] OpcodeAuipc = 7'b00_101_11;
+  // localparam bit [`OPCODE_SIZE] OpcodeAuipc = 7'b00_101_11;
   localparam bit [`OPCODE_SIZE] OpcodeLui = 7'b01_101_11;
 
   // cycle counter, not really part of any stage but useful for orienting within GtkWave
@@ -160,7 +217,11 @@ module DatapathPipelined (
       f_cycle_status <= CYCLE_NO_STALL;
     end else begin
       f_cycle_status <= CYCLE_NO_STALL;
-      f_pc_current <= f_pc_current + 4;
+      if (branch_bool > 0) begin
+        f_pc_current <= branch_taken;
+      end else begin
+        f_pc_current <= f_pc_current + 4;
+      end
     end
   end
   // send PC to imem
@@ -195,7 +256,7 @@ module DatapathPipelined (
         decode_state <= '{
           pc: f_pc_current,
           insn: f_insn,
-          cycle_status: f_cycle_status
+          cycle_status: branch_bool > 0 ? CYCLE_TAKEN_BRANCH : f_cycle_status
         };
       end
     end
@@ -210,6 +271,682 @@ module DatapathPipelined (
 
   // TODO: your code here, though you will also need to modify some of the code above
   // TODO: the testbench requires that your register file instance is named `rf`
+
+  // instatiate register file data
+  logic [`REG_SIZE] regfile_rs1_data;
+  logic [`REG_SIZE] regfile_rs2_data;
+  logic [`REG_SIZE] regfile_rd_data;
+
+  // decode instruction
+  // components of the instruction
+  wire [6:0] d_insn_funct7;
+  wire [4:0] d_insn_rs2;
+  wire [4:0] d_insn_rs1;
+  wire [2:0] d_insn_funct3;
+  wire [4:0] d_insn_rd;
+  wire [`OPCODE_SIZE] d_insn_opcode;
+
+  // split R-type instruction - see section 2.2 of RiscV spec
+  assign {d_insn_funct7, d_insn_rs2, d_insn_rs1, d_insn_funct3, d_insn_rd, d_insn_opcode} = decode_state.insn;
+
+  // setup for I, S, B & J type instructions
+  // I - short immediates and loads
+  wire [11:0] d_imm_i;
+  assign d_imm_i = decode_state.insn[31:20];
+  wire [4:0] d_imm_shamt = decode_state.insn[24:20];
+
+  // S - stores
+  wire [11:0] d_imm_s;
+  assign d_imm_s[11:5] = d_insn_funct7, d_imm_s[4:0] = d_insn_rd;
+
+  // B - conditionals
+  wire [12:0] d_imm_b;
+  assign {d_imm_b[12], d_imm_b[10:5]} = d_insn_funct7, {d_imm_b[4:1], d_imm_b[11]} = d_insn_rd, d_imm_b[0] = 1'b0;
+
+  // J - unconditional jumps
+  wire [20:0] d_imm_j;
+  assign {d_imm_j[20], d_imm_j[10:1], d_imm_j[11], d_imm_j[19:12], d_imm_j[0]} = {decode_state.insn[31:12], 1'b0};
+
+  wire [`REG_SIZE] d_imm_i_sext = {{20{d_imm_i[11]}}, d_imm_i[11:0]};
+  wire [`REG_SIZE] d_imm_s_sext = {{20{d_imm_s[11]}}, d_imm_s[11:0]};
+  wire [`REG_SIZE] d_imm_b_sext = {{19{d_imm_b[12]}}, d_imm_b[12:0]};
+  wire [`REG_SIZE] d_imm_j_sext = {{11{d_imm_j[20]}}, d_imm_j[20:0]};
+
+  logic regfile_we;
+
+  // instatiate register file
+  RegFile rf (
+      .clk(clk),
+      .rst(rst),
+      .we(regfile_we),
+      .rd(w_insn_rd),
+      .rs1(d_insn_rs1),
+      .rs2(d_insn_rs2),
+      .rd_data(regfile_rd_data),
+      .rs1_data(regfile_rs1_data),
+      .rs2_data(regfile_rs2_data)
+  );
+
+  logic illegal_insn;
+
+  // setup for register file write
+  always_comb begin
+    illegal_insn = 1'b0;
+    // halt = 1'b0;
+    if (decode_state.cycle_status == CYCLE_NO_STALL) begin
+     case (d_insn_opcode)
+        OpcodeLui: begin
+        end
+        OpcodeRegImm: begin
+          case (decode_state.insn[14:12])
+            // addi
+            3'b000: begin
+            end
+            // slti
+            3'b010: begin
+            end
+            // sltiu
+            3'b011: begin
+            end
+            // xori
+            3'b100: begin
+            end
+            // ori
+            3'b110: begin
+            end
+            // andi
+            3'b111: begin
+            end
+            // slli
+            3'b001: begin
+            end
+            // srli & srai
+            3'b101: begin
+              if (decode_state.insn[31:25] == 7'd0) begin
+              end else if (decode_state.insn[31:25] == 7'b0100000) begin
+              end else begin
+                illegal_insn = 1'b1;
+              end
+            end
+            default: begin
+              illegal_insn = 1'b1;
+            end
+          endcase
+        end
+        OpcodeRegReg: begin
+          case (decode_state.insn[14:12])
+            // add & sub & mul
+            3'b000: begin
+              // add
+              if (decode_state.insn[31:25] == 7'b0) begin
+              // sub
+              end else if (decode_state.insn[31:25] == 7'b0100000) begin
+              // mul
+              end else if (decode_state.insn[31:25] == 7'd1) begin
+              end else begin
+                illegal_insn = 1'b1;
+              end
+            end 
+            // sll & mulh
+            3'b001: begin
+              // sll
+              if (decode_state.insn[31:25] == 7'd0) begin
+              end
+              // mulh
+              else if (decode_state.insn[31:25] == 7'd1) begin
+              end else begin
+                illegal_insn = 1'b1;
+              end
+            end
+            // slt & mulhsu
+            3'b010: begin
+              // slt
+              if (decode_state.insn[31:25] == 7'd0) begin
+              end
+              // mulhsu
+              else if (decode_state.insn[31:25] == 7'd1) begin
+              end else begin
+                illegal_insn = 1'b1;
+              end
+            end
+            // sltu & mulhu
+            3'b011: begin
+              // sltu
+              if (decode_state.insn[31:25] == 7'd0) begin
+              end
+              // mulhu
+              else if (decode_state.insn[31:25] == 7'd1) begin
+              end else begin
+                illegal_insn = 1'b1;
+              end
+            end
+            // xor
+            3'b100: begin
+
+            end
+            // srl & sra
+            3'b101: begin
+              if (decode_state.insn[31:25] == 7'd0) begin
+              end else if (decode_state.insn[31:25] == 7'b0100000) begin
+              end else begin
+                illegal_insn = 1'b1;
+              end
+            end
+            // or
+            3'b110: begin
+            end
+            // and
+            3'b111: begin
+            end
+            default: begin
+              illegal_insn = 1'b1;
+            end
+          endcase
+        end
+        OpcodeBranch: begin
+          case (decode_state.insn[14:12])
+            // beq
+            3'b000: begin
+              if (e_bypass_rs1 == e_bypass_rs2) begin
+              end
+            end
+            // bne
+            3'b001: begin
+              if (e_bypass_rs1 != e_bypass_rs2) begin
+              end
+            end
+            // blt
+            3'b100: begin
+              if ($signed(e_bypass_rs1) < $signed(e_bypass_rs2)) begin
+              end
+            end
+            // bge
+            3'b101: begin
+              if ($signed(e_bypass_rs1) >= $signed(e_bypass_rs2)) begin
+              end
+            end
+            // bltu
+            3'b110: begin
+              if (e_bypass_rs1 < e_bypass_rs2) begin
+              end
+            end
+            // bgeu
+            3'b111: begin
+              if (e_bypass_rs1 >= e_bypass_rs2) begin
+              end
+            end
+            default: begin
+              illegal_insn = 1'b1;
+            end
+          endcase
+        end
+        OpcodeEnviron: begin
+          if(decode_state.insn[31:7] == 25'd0) begin
+            // halt = 1'b1;
+          end else begin
+            illegal_insn = 1'b1;
+          end
+        end
+        default: begin
+          illegal_insn = 1'b1;
+        end
+      endcase
+    end
+  end
+
+  /*****************/
+  /* EXECUTE STAGE */
+  /*****************/
+  stage_execute_t execute_state;
+  always_ff @(posedge clk) begin
+    if (rst) begin
+      execute_state <= '{
+        pc: 0,
+        insn: 0,
+        cycle_status: CYCLE_RESET,
+        rs1_data: 0,
+        rs2_data: 0
+      };
+    end else begin
+      begin
+        execute_state <= '{
+          pc: decode_state.pc,
+          insn: decode_state.insn,
+          cycle_status: illegal_insn ? CYCLE_INVALID : branch_bool > 0 ? CYCLE_TAKEN_BRANCH : decode_state.cycle_status,
+          rs1_data: regfile_rs1_data,
+          rs2_data: regfile_rs2_data
+        };
+      end
+    end
+  end
+  wire [255:0] e_disasm;
+  Disasm #(
+      .PREFIX("E")
+  ) disasm_1execute (
+      .insn  (execute_state.insn),
+      .disasm(e_disasm)
+  );
+
+  // components of the instruction
+  wire [6:0] e_insn_funct7;
+  wire [4:0] e_insn_rs2;
+  wire [4:0] e_insn_rs1;
+  wire [2:0] e_insn_funct3;
+  wire [4:0] e_insn_rd;
+  wire [`OPCODE_SIZE] e_insn_opcode;
+
+  // split R-type instruction - see section 2.2 of RiscV spec
+  assign {e_insn_funct7, e_insn_rs2, e_insn_rs1, e_insn_funct3, e_insn_rd, e_insn_opcode} = execute_state.insn;
+
+  // setup for I, S, B & J type instructions
+  // I - short immediates and loads
+  wire [11:0] e_imm_i;
+  assign e_imm_i = execute_state.insn[31:20];
+  wire [ 4:0] e_imm_shamt = execute_state.insn[24:20];
+
+  // S - stores
+  wire [11:0] e_imm_s;
+  assign e_imm_s[11:5] = e_insn_funct7, e_imm_s[4:0] = e_insn_rd;
+
+  // B - conditionals
+  wire [12:0] e_imm_b;
+  assign {e_imm_b[12], e_imm_b[10:5]} = e_insn_funct7, {e_imm_b[4:1], e_imm_b[11]} = e_insn_rd, e_imm_b[0] = 1'b0;
+
+  // J - unconditional jumps
+  wire [20:0] e_imm_j;
+  assign {e_imm_j[20], e_imm_j[10:1], e_imm_j[11], e_imm_j[19:12], e_imm_j[0]} = {execute_state.insn[31:12], 1'b0};
+
+  wire [`REG_SIZE] e_imm_i_sext = {{20{e_imm_i[11]}}, e_imm_i[11:0]};
+  wire [`REG_SIZE] e_imm_s_sext = {{20{e_imm_s[11]}}, e_imm_s[11:0]};
+  wire [`REG_SIZE] e_imm_b_sext = {{19{e_imm_b[12]}}, e_imm_b[12:0]};
+  wire [`REG_SIZE] e_imm_j_sext = {{11{e_imm_j[20]}}, e_imm_j[20:0]};
+
+  // result of ALU
+  logic[31:0] e_result;
+
+  logic[31:0] e_bypass_rs1; 
+  logic[31:0] e_bypass_rs2; 
+
+  // multiply
+  logic[63:0] product;
+
+  // branch
+  logic[31:0] branch_taken;
+  logic branch_bool;
+
+  // MX bypass logic
+  always_comb begin
+    e_bypass_rs1 = 0;
+    e_bypass_rs2 = 0;
+    if (execute_state.cycle_status == CYCLE_NO_STALL) begin
+      if ((e_insn_rs1 == m_insn_rd) && m_insn_rd != 0 && memory_state.cycle_status == CYCLE_NO_STALL && memory_state.insn[6:0] != OpcodeBranch) begin
+        e_bypass_rs1 = memory_state.alu_result;
+      end else begin
+        // WX bypass logic
+        if ((e_insn_rs1 == w_insn_rd) && w_insn_rd != 0 && writeback_state.cycle_status == CYCLE_NO_STALL && writeback_state.insn[6:0] != OpcodeBranch) begin
+          e_bypass_rs1 = writeback_state.alu_result;
+        end else begin
+          e_bypass_rs1 = execute_state.rs1_data;
+        end
+      end 
+      if ((e_insn_rs2 == m_insn_rd) && m_insn_rd != 0 && memory_state.cycle_status == CYCLE_NO_STALL && memory_state.insn[6:0] != OpcodeBranch) begin
+        e_bypass_rs2 = memory_state.alu_result;
+      end else begin
+        // WX bypass logic
+        if ((e_insn_rs2 == w_insn_rd) && w_insn_rd != 0 && writeback_state.cycle_status == CYCLE_NO_STALL && writeback_state.insn[6:0] != OpcodeBranch) begin
+          e_bypass_rs2 = writeback_state.alu_result;
+        end else begin
+          e_bypass_rs2 = execute_state.rs2_data;
+        end
+      end
+    end
+  end
+
+  always_comb begin
+    branch_bool = 0;
+    branch_taken = 0;
+    e_result = 0;
+    product = 0;
+    if (execute_state.cycle_status == CYCLE_NO_STALL) begin
+      case (e_insn_opcode)
+        OpcodeLui: begin
+          e_result = {execute_state.insn[31:12], 12'b0};
+        end
+        OpcodeRegImm: begin
+          case (execute_state.insn[14:12])
+            // addi
+            3'b000: begin
+              e_result = e_bypass_rs1 + e_imm_i_sext;
+            end
+            // slti
+            3'b010: begin
+              e_result = ($signed(e_bypass_rs1) < $signed(e_imm_i_sext)) ? 32'd1 : 32'd0;
+            end
+            // sltiu
+            3'b011: begin
+              e_result = (e_bypass_rs1 < e_imm_i_sext) ? 32'd1 : 32'd0;
+            end
+            // xori
+            3'b100: begin
+              e_result = e_bypass_rs1 ^ e_imm_i_sext;
+            end
+            // ori
+            3'b110: begin
+              e_result = e_bypass_rs1 | e_imm_i_sext;
+            end
+            // andi
+            3'b111: begin
+              e_result = e_bypass_rs1 & e_imm_i_sext;
+            end
+            // slli
+            3'b001: begin
+              e_result = e_bypass_rs1 << e_imm_shamt;
+            end
+            // srli & srai
+            3'b101: begin
+              if (execute_state.insn[31:25] == 7'd0) begin
+                e_result = e_bypass_rs1 >> e_imm_shamt;
+              end else if (execute_state.insn[31:25] == 7'b0100000) begin
+                e_result = $signed(e_bypass_rs1) >>> e_imm_shamt;
+              end
+            end
+            default: begin
+            end
+          endcase
+        end
+        OpcodeRegReg: begin
+          case (execute_state.insn[14:12])
+            // add & sub & mul
+            3'b000: begin
+              // add
+              if (execute_state.insn[31:25] == 7'b0) begin
+                e_result = e_bypass_rs1 + e_bypass_rs2;
+              // sub
+              end else if (execute_state.insn[31:25] == 7'b0100000) begin
+                e_result = e_bypass_rs1 - e_bypass_rs2;
+              // mul
+              end else if (execute_state.insn[31:25] == 7'd1) begin
+                product = {{32{1'b0}}, e_bypass_rs1} * {{32{1'b0}}, e_bypass_rs2};
+                e_result = product[31:0];
+              end
+            end
+            // sll & mulh
+            3'b001: begin
+              // sll
+              if (execute_state.insn[31:25] == 7'd0) begin
+                e_result = e_bypass_rs1 << e_bypass_rs2[4:0];
+              end
+              // mulh
+              else if (execute_state.insn[31:25] == 7'd1) begin
+                product = $signed({{32{e_bypass_rs1[31]}}, e_bypass_rs1}) * $signed({{32{e_bypass_rs2[31]}}, e_bypass_rs2});
+                e_result = product[63:32];
+              end
+            end
+            // slt & mulhsu
+            3'b010: begin
+              // slt
+              if (execute_state.insn[31:25] == 7'd0) begin
+                e_result = ($signed(e_bypass_rs1) < $signed(e_bypass_rs2)) ? 32'd1 : 32'd0;
+              end
+              // mulhsu
+              else if (execute_state.insn[31:25] == 7'd1) begin
+                product = $signed({{32{e_bypass_rs1[31]}}, e_bypass_rs1}) * ({{32{1'b0}}, e_bypass_rs2});
+                e_result = product[63:32];
+              end
+            end
+            // sltu & mulhu
+            3'b011: begin
+              // sltu
+              if (execute_state.insn[31:25] == 7'd0) begin
+                e_result = (e_bypass_rs1 < e_bypass_rs2) ? 32'd1 : 32'd0;
+              end
+              // mulhu
+              else if (execute_state.insn[31:25] == 7'd1) begin
+                product = ({{32{1'b0}}, e_bypass_rs1}) * ({{32{1'b0}}, e_bypass_rs2});
+                e_result = product[63:32];
+              end
+            end
+            // xor
+            3'b100: begin
+              e_result = e_bypass_rs1 ^ e_bypass_rs2;
+            end
+            // srl & sra
+            3'b101: begin
+              if (execute_state.insn[31:25] == 7'd0) begin
+                e_result = e_bypass_rs1 >> e_bypass_rs2[4:0];
+              end else if (execute_state.insn[31:25] == 7'b0100000) begin
+                e_result = $signed(e_bypass_rs1) >>> e_bypass_rs2[4:0];
+              end
+            end
+            // or
+            3'b110: begin
+              e_result = e_bypass_rs1 | e_bypass_rs2;
+            end
+            // and
+            3'b111: begin
+              e_result = e_bypass_rs1 & e_bypass_rs2;
+            end
+            default: begin
+            end
+          endcase
+        end
+        OpcodeBranch: begin
+          case (execute_state.insn[14:12])
+            // beq
+            3'b000: begin
+              if (e_bypass_rs1 == e_bypass_rs2) begin
+                branch_bool = 1;
+                branch_taken = execute_state.pc + e_imm_b_sext;
+              end
+            end
+            // bne
+            3'b001: begin
+              if (e_bypass_rs1 != e_bypass_rs2) begin
+                branch_bool = 1;
+                branch_taken = execute_state.pc + e_imm_b_sext;
+              end
+            end
+            // blt
+            3'b100: begin
+              if ($signed(e_bypass_rs1) < $signed(e_bypass_rs2)) begin
+                branch_bool = 1;
+                branch_taken = execute_state.pc + e_imm_b_sext;
+              end
+            end
+            // bge
+            3'b101: begin
+              if ($signed(e_bypass_rs1) >= $signed(e_bypass_rs2)) begin
+                branch_bool = 1;
+                branch_taken = execute_state.pc + e_imm_b_sext;
+              end
+            end
+            // bltu
+            3'b110: begin
+              if (e_bypass_rs1 < e_bypass_rs2) begin
+                branch_bool = 1;
+                branch_taken = execute_state.pc + e_imm_b_sext;
+              end
+            end
+            // bgeu
+            3'b111: begin
+              if (e_bypass_rs1 >= e_bypass_rs2) begin
+                branch_bool = 1;
+                branch_taken = execute_state.pc + e_imm_b_sext;
+              end
+            end
+            default: begin
+            end
+          endcase
+        end
+        default: begin
+        end
+      endcase
+    end
+  end
+
+  /****************/
+  /* MEMORY STAGE */
+  /****************/
+  stage_memory_t memory_state;
+  always_ff @(posedge clk) begin
+    if (rst) begin
+      memory_state <= '{
+        pc: 0,
+        insn: 0,
+        cycle_status: CYCLE_RESET,
+        alu_result: 0
+      };
+    end else begin
+      begin
+        memory_state <= '{
+          pc: execute_state.pc,
+          insn: execute_state.insn,
+          cycle_status:  execute_state.cycle_status,
+          alu_result: e_result
+        };
+      end
+    end
+  end
+  wire [255:0] m_disasm;
+  Disasm #(
+      .PREFIX("M")
+  ) disasm_1memory (
+      .insn  (memory_state.insn),
+      .disasm(m_disasm)
+  );
+
+  // components of the instruction
+  wire [6:0] m_insn_funct7;
+  wire [4:0] m_insn_rs2;
+  wire [4:0] m_insn_rs1;
+  wire [2:0] m_insn_funct3;
+  wire [4:0] m_insn_rd;
+  wire [`OPCODE_SIZE] m_insn_opcode;
+
+  // split R-type instruction - see section 2.2 of RiscV spec
+  assign {m_insn_funct7, m_insn_rs2, m_insn_rs1, m_insn_funct3, m_insn_rd, m_insn_opcode} = memory_state.insn;
+
+  // setup for I, S, B & J type instructions
+  // I - short immediates and loads
+  wire [11:0] m_imm_i;
+  assign m_imm_i = memory_state.insn[31:20];
+  wire [4:0] m_imm_shamt = memory_state.insn[24:20];
+
+  // S - stores
+  wire [11:0] m_imm_s;
+  assign m_imm_s[11:5] = m_insn_funct7, m_imm_s[4:0] = m_insn_rd;
+
+  // B - conditionals
+  wire [12:0] m_imm_b;
+  assign {m_imm_b[12], m_imm_b[10:5]} = m_insn_funct7, {m_imm_b[4:1], m_imm_b[11]} = m_insn_rd, m_imm_b[0] = 1'b0;
+
+  // J - unconditional jumps
+  wire [20:0] m_imm_j;
+  assign {m_imm_j[20], m_imm_j[10:1], m_imm_j[11], m_imm_j[19:12], m_imm_j[0]} = {memory_state.insn[31:12], 1'b0};
+
+  wire [`REG_SIZE] m_imm_i_sext = {{20{m_imm_i[11]}}, m_imm_i[11:0]};
+  wire [`REG_SIZE] m_imm_s_sext = {{20{m_imm_s[11]}}, m_imm_s[11:0]};
+  wire [`REG_SIZE] m_imm_b_sext = {{19{m_imm_b[12]}}, m_imm_b[12:0]};
+  wire [`REG_SIZE] m_imm_j_sext = {{11{m_imm_j[20]}}, m_imm_j[20:0]};
+
+
+  /*******************/
+  /* WRITEBACK STAGE */
+  /*******************/
+  stage_writeback_t writeback_state;
+  always_ff @(posedge clk) begin
+    if (rst) begin
+      writeback_state <= '{
+        pc: 0,
+        insn: 0,
+        cycle_status: CYCLE_RESET,
+        alu_result: 0
+      };
+    end else begin
+      begin
+        writeback_state <= '{
+          pc: memory_state.cycle_status == CYCLE_TAKEN_BRANCH ? 0 : memory_state.pc,
+          insn: memory_state.cycle_status == CYCLE_TAKEN_BRANCH ? 0 : memory_state.insn,
+          cycle_status:  memory_state.cycle_status,
+          alu_result: memory_state.alu_result
+        };
+      end
+    end
+  end
+  wire [255:0] w_disasm;
+  Disasm #(
+      .PREFIX("W")
+  ) disasm_1writeback (
+      .insn  (writeback_state.insn),
+      .disasm(w_disasm)
+  );
+
+  // components of the instruction
+  wire [6:0] w_insn_funct7;
+  wire [4:0] w_insn_rs2;
+  wire [4:0] w_insn_rs1;
+  wire [2:0] w_insn_funct3;
+  wire [4:0] w_insn_rd;
+  wire [`OPCODE_SIZE] w_insn_opcode;
+
+  // split R-type instruction - see section 2.2 of RiscV spec
+  assign {w_insn_funct7, w_insn_rs2, w_insn_rs1, w_insn_funct3, w_insn_rd, w_insn_opcode} = writeback_state.insn;
+
+  // setup for I, S, B & J type instructions
+  // I - short immediates and loads
+  wire [11:0] w_imm_i;
+  assign w_imm_i = writeback_state.insn[31:20];
+  wire [4:0] w_imm_shamt = writeback_state.insn[24:20];
+
+  // S - stores
+  wire [11:0] w_imm_s;
+  assign w_imm_s[11:5] = w_insn_funct7, w_imm_s[4:0] = w_insn_rd;
+
+  // B - conditionals
+  wire [12:0] w_imm_b;
+  assign {w_imm_b[12], w_imm_b[10:5]} = w_insn_funct7, {w_imm_b[4:1], w_imm_b[11]} = w_insn_rd, w_imm_b[0] = 1'b0;
+
+  // J - unconditional jumps
+  wire [20:0] w_imm_j;
+  assign {w_imm_j[20], w_imm_j[10:1], w_imm_j[11], w_imm_j[19:12], w_imm_j[0]} = {writeback_state.insn[31:12], 1'b0};
+
+  wire [`REG_SIZE] w_imm_i_sext = {{20{w_imm_i[11]}}, w_imm_i[11:0]};
+  wire [`REG_SIZE] w_imm_s_sext = {{20{w_imm_s[11]}}, w_imm_s[11:0]};
+  wire [`REG_SIZE] w_imm_b_sext = {{19{w_imm_b[12]}}, w_imm_b[12:0]};
+  wire [`REG_SIZE] w_imm_j_sext = {{11{w_imm_j[20]}}, w_imm_j[20:0]};
+
+  always_comb begin
+      regfile_we = 1'b0;
+      halt = 1'b0;
+      regfile_rd_data = 0;
+    if (writeback_state.cycle_status == CYCLE_NO_STALL) begin
+      case (w_insn_opcode)
+        OpcodeLui: begin
+          regfile_rd_data = writeback_state.alu_result;
+          regfile_we = 1;
+        end
+        OpcodeRegImm: begin
+          regfile_rd_data = writeback_state.alu_result;
+          regfile_we = 1;
+        end
+        OpcodeRegReg: begin
+          regfile_rd_data = writeback_state.alu_result;
+          regfile_we = 1;
+        end
+        OpcodeEnviron: begin
+          if(writeback_state.insn[31:7] == 25'd0) begin
+            halt = 1'b1;
+          end
+        end
+        default: begin
+        end
+      endcase
+    end
+  end
+
+  assign trace_writeback_pc = writeback_state.pc;
+  assign trace_writeback_insn = writeback_state.insn;
+  assign trace_writeback_cycle_status = writeback_state.cycle_status;
 
 endmodule
 
