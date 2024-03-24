@@ -185,7 +185,7 @@ module DatapathPipelined (
 
   localparam bit [`OPCODE_SIZE] OpcodeRegImm = 7'b00_100_11;
   localparam bit [`OPCODE_SIZE] OpcodeRegReg = 7'b01_100_11;
-  // localparam bit [`OPCODE_SIZE] OpcodeEnviron = 7'b11_100_11;
+  localparam bit [`OPCODE_SIZE] OpcodeEnviron = 7'b11_100_11;
 
   // localparam bit [`OPCODE_SIZE] OpcodeAuipc = 7'b00_101_11;
   localparam bit [`OPCODE_SIZE] OpcodeLui = 7'b01_101_11;
@@ -217,7 +217,7 @@ module DatapathPipelined (
       f_cycle_status <= CYCLE_NO_STALL;
     end else begin
       f_cycle_status <= CYCLE_NO_STALL;
-      if (branch_taken > 0) begin
+      if (branch_bool > 0) begin
         f_pc_current <= branch_taken;
       end else begin
         f_pc_current <= f_pc_current + 4;
@@ -256,7 +256,7 @@ module DatapathPipelined (
         decode_state <= '{
           pc: f_pc_current,
           insn: f_insn,
-          cycle_status: branch_taken > 0 ? CYCLE_TAKEN_BRANCH : f_cycle_status
+          cycle_status: branch_bool > 0 ? CYCLE_TAKEN_BRANCH : f_cycle_status
         };
       end
     end
@@ -480,6 +480,13 @@ module DatapathPipelined (
             end
           endcase
         end
+        OpcodeEnviron: begin
+          if(decode_state.insn[31:7] == 25'd0) begin
+            halt = 1'b1;
+          end else begin
+            illegal_insn = 1'b1;
+          end
+        end
         default: begin
           illegal_insn = 1'b1;
         end
@@ -505,7 +512,7 @@ module DatapathPipelined (
         execute_state <= '{
           pc: decode_state.pc,
           insn: decode_state.insn,
-          cycle_status: illegal_insn ? CYCLE_INVALID : branch_taken > 0 ? CYCLE_TAKEN_BRANCH : decode_state.cycle_status,
+          cycle_status: illegal_insn ? CYCLE_INVALID : branch_bool > 0 ? CYCLE_TAKEN_BRANCH : decode_state.cycle_status,
           rs1_data: regfile_rs1_data,
           rs2_data: regfile_rs2_data
         };
@@ -565,6 +572,7 @@ module DatapathPipelined (
 
   // branch
   logic[31:0] branch_taken;
+  logic branch_bool;
 
   // MX bypass logic
   always_comb begin
@@ -595,6 +603,7 @@ module DatapathPipelined (
   end
 
   always_comb begin
+    branch_bool = 0;
     branch_taken = 0;
     e_result = 0;
     product = 0;
@@ -726,36 +735,42 @@ module DatapathPipelined (
             // beq
             3'b000: begin
               if (e_bypass_rs1 == e_bypass_rs2) begin
+                branch_bool = 1;
                 branch_taken = execute_state.pc + e_imm_b_sext;
               end
             end
             // bne
             3'b001: begin
               if (e_bypass_rs1 != e_bypass_rs2) begin
+                branch_bool = 1;
                 branch_taken = execute_state.pc + e_imm_b_sext;
               end
             end
             // blt
             3'b100: begin
               if ($signed(e_bypass_rs1) < $signed(e_bypass_rs2)) begin
+                branch_bool = 1;
                 branch_taken = execute_state.pc + e_imm_b_sext;
               end
             end
             // bge
             3'b101: begin
               if ($signed(e_bypass_rs1) >= $signed(e_bypass_rs2)) begin
+                branch_bool = 1;
                 branch_taken = execute_state.pc + e_imm_b_sext;
               end
             end
             // bltu
             3'b110: begin
               if (e_bypass_rs1 < e_bypass_rs2) begin
+                branch_bool = 1;
                 branch_taken = execute_state.pc + e_imm_b_sext;
               end
             end
             // bgeu
             3'b111: begin
               if (e_bypass_rs1 >= e_bypass_rs2) begin
+                branch_bool = 1;
                 branch_taken = execute_state.pc + e_imm_b_sext;
               end
             end
@@ -850,8 +865,8 @@ module DatapathPipelined (
     end else begin
       begin
         writeback_state <= '{
-          pc: memory_state.pc,
-          insn: memory_state.insn,
+          pc: memory_state.cycle_status == CYCLE_TAKEN_BRANCH ? 0 : memory_state.pc,
+          insn: memory_state.cycle_status == CYCLE_TAKEN_BRANCH ? 0 : memory_state.insn,
           cycle_status:  memory_state.cycle_status,
           alu_result: memory_state.alu_result
         };
