@@ -338,7 +338,7 @@ module DatapathPipelined (
         OpcodeLui: begin
         end
         OpcodeRegImm: begin
-          case (execute_state.insn[14:12])
+          case (decode_state.insn[14:12])
             // addi
             3'b000: begin
             end
@@ -362,8 +362,8 @@ module DatapathPipelined (
             end
             // srli & srai
             3'b101: begin
-              if (execute_state.insn[31:25] == 7'd0) begin
-              end else if (execute_state.insn[31:25] == 7'b0100000) begin
+              if (decode_state.insn[31:25] == 7'd0) begin
+              end else if (decode_state.insn[31:25] == 7'b0100000) begin
               end else begin
                 illegal_insn = 1'b1;
               end
@@ -374,15 +374,15 @@ module DatapathPipelined (
           endcase
         end
         OpcodeRegReg: begin
-          case (execute_state.insn[14:12])
+          case (decode_state.insn[14:12])
             // add & sub & mul
             3'b000: begin
               // add
-              if (execute_state.insn[31:25] == 7'b0) begin
+              if (decode_state.insn[31:25] == 7'b0) begin
               // sub
-              end else if (execute_state.insn[31:25] == 7'b0100000) begin
+              end else if (decode_state.insn[31:25] == 7'b0100000) begin
               // mul
-              end else if (execute_state.insn[31:25] == 7'd1) begin
+              end else if (decode_state.insn[31:25] == 7'd1) begin
               end else begin
                 illegal_insn = 1'b1;
               end
@@ -390,10 +390,10 @@ module DatapathPipelined (
             // sll & mulh
             3'b001: begin
               // sll
-              if (execute_state.insn[31:25] == 7'd0) begin
+              if (decode_state.insn[31:25] == 7'd0) begin
               end
               // mulh
-              else if (execute_state.insn[31:25] == 7'd1) begin
+              else if (decode_state.insn[31:25] == 7'd1) begin
               end else begin
                 illegal_insn = 1'b1;
               end
@@ -401,10 +401,10 @@ module DatapathPipelined (
             // slt & mulhsu
             3'b010: begin
               // slt
-              if (execute_state.insn[31:25] == 7'd0) begin
+              if (decode_state.insn[31:25] == 7'd0) begin
               end
               // mulhsu
-              else if (execute_state.insn[31:25] == 7'd1) begin
+              else if (decode_state.insn[31:25] == 7'd1) begin
               end else begin
                 illegal_insn = 1'b1;
               end
@@ -412,10 +412,10 @@ module DatapathPipelined (
             // sltu & mulhu
             3'b011: begin
               // sltu
-              if (execute_state.insn[31:25] == 7'd0) begin
+              if (decode_state.insn[31:25] == 7'd0) begin
               end
               // mulhu
-              else if (execute_state.insn[31:25] == 7'd1) begin
+              else if (decode_state.insn[31:25] == 7'd1) begin
               end else begin
                 illegal_insn = 1'b1;
               end
@@ -426,8 +426,8 @@ module DatapathPipelined (
             end
             // srl & sra
             3'b101: begin
-              if (execute_state.insn[31:25] == 7'd0) begin
-              end else if (execute_state.insn[31:25] == 7'b0100000) begin
+              if (decode_state.insn[31:25] == 7'd0) begin
+              end else if (decode_state.insn[31:25] == 7'b0100000) begin
               end else begin
                 illegal_insn = 1'b1;
               end
@@ -444,7 +444,7 @@ module DatapathPipelined (
           endcase
         end
         OpcodeBranch: begin
-          case (execute_state.insn[14:12])
+          case (decode_state.insn[14:12])
             // beq
             3'b000: begin
               if (e_bypass_rs1 == e_bypass_rs2) begin
