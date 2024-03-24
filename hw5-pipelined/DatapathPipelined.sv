@@ -406,12 +406,22 @@ module DatapathPipelined (
     if ((e_insn_rs1 == m_insn_rd) && m_insn_rd != 0) begin
       e_bypass_rs1 = memory_state.alu_result;
     end else begin
-      e_bypass_rs1 = execute_state.rs1_data;
-    end
+      // WX bypass logic
+      if ((e_insn_rs1 == w_insn_rd) && w_insn_rd != 0) begin
+        e_bypass_rs1 = writeback_state.alu_result;
+      end else begin
+        e_bypass_rs1 = execute_state.rs1_data;
+      end
+    end 
     if ((e_insn_rs2 == m_insn_rd) && m_insn_rd != 0) begin
       e_bypass_rs2 = memory_state.alu_result;
     end else begin
-      e_bypass_rs2 = execute_state.rs2_data;
+      // WX bypass logic
+      if ((e_insn_rs2 == w_insn_rd) && w_insn_rd != 0) begin
+        e_bypass_rs2 = writeback_state.alu_result;
+      end else begin
+        e_bypass_rs2 = execute_state.rs2_data;
+      end
     end
   end
 
