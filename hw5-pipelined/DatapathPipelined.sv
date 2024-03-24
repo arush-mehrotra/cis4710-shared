@@ -334,14 +334,151 @@ module DatapathPipelined (
     illegal_insn = 1'b0;
     halt = 1'b0;
     if (decode_state.cycle_status == CYCLE_NO_STALL) begin
-      case (d_insn_opcode)
+     case (d_insn_opcode)
         OpcodeLui: begin
         end
         OpcodeRegImm: begin
+          case (execute_state.insn[14:12])
+            // addi
+            3'b000: begin
+            end
+            // slti
+            3'b010: begin
+            end
+            // sltiu
+            3'b011: begin
+            end
+            // xori
+            3'b100: begin
+            end
+            // ori
+            3'b110: begin
+            end
+            // andi
+            3'b111: begin
+            end
+            // slli
+            3'b001: begin
+            end
+            // srli & srai
+            3'b101: begin
+              if (execute_state.insn[31:25] == 7'd0) begin
+              end else if (execute_state.insn[31:25] == 7'b0100000) begin
+              end else begin
+                illegal_insn = 1'b1;
+              end
+            end
+            default: begin
+              illegal_insn = 1'b1;
+            end
+          endcase
         end
         OpcodeRegReg: begin
+          case (execute_state.insn[14:12])
+            // add & sub & mul
+            3'b000: begin
+              // add
+              if (execute_state.insn[31:25] == 7'b0) begin
+              // sub
+              end else if (execute_state.insn[31:25] == 7'b0100000) begin
+              // mul
+              end else if (execute_state.insn[31:25] == 7'd1) begin
+              end else begin
+                illegal_insn = 1'b1;
+              end
+            end 
+            // sll & mulh
+            3'b001: begin
+              // sll
+              if (execute_state.insn[31:25] == 7'd0) begin
+              end
+              // mulh
+              else if (execute_state.insn[31:25] == 7'd1) begin
+              end else begin
+                illegal_insn = 1'b1;
+              end
+            end
+            // slt & mulhsu
+            3'b010: begin
+              // slt
+              if (execute_state.insn[31:25] == 7'd0) begin
+              end
+              // mulhsu
+              else if (execute_state.insn[31:25] == 7'd1) begin
+              end else begin
+                illegal_insn = 1'b1;
+              end
+            end
+            // sltu & mulhu
+            3'b011: begin
+              // sltu
+              if (execute_state.insn[31:25] == 7'd0) begin
+              end
+              // mulhu
+              else if (execute_state.insn[31:25] == 7'd1) begin
+              end else begin
+                illegal_insn = 1'b1;
+              end
+            end
+            // xor
+            3'b100: begin
+
+            end
+            // srl & sra
+            3'b101: begin
+              if (execute_state.insn[31:25] == 7'd0) begin
+              end else if (execute_state.insn[31:25] == 7'b0100000) begin
+              end else begin
+                illegal_insn = 1'b1;
+              end
+            end
+            // or
+            3'b110: begin
+            end
+            // and
+            3'b111: begin
+            end
+            default: begin
+              illegal_insn = 1'b1;
+            end
+          endcase
         end
         OpcodeBranch: begin
+          case (execute_state.insn[14:12])
+            // beq
+            3'b000: begin
+              if (e_bypass_rs1 == e_bypass_rs2) begin
+              end
+            end
+            // bne
+            3'b001: begin
+              if (e_bypass_rs1 != e_bypass_rs2) begin
+              end
+            end
+            // blt
+            3'b100: begin
+              if ($signed(e_bypass_rs1) < $signed(e_bypass_rs2)) begin
+              end
+            end
+            // bge
+            3'b101: begin
+              if ($signed(e_bypass_rs1) >= $signed(e_bypass_rs2)) begin
+              end
+            end
+            // bltu
+            3'b110: begin
+              if (e_bypass_rs1 < e_bypass_rs2) begin
+              end
+            end
+            // bgeu
+            3'b111: begin
+              if (e_bypass_rs1 >= e_bypass_rs2) begin
+              end
+            end
+            default: begin
+              illegal_insn = 1'b1;
+            end
+          endcase
         end
         default: begin
           illegal_insn = 1'b1;
@@ -368,7 +505,7 @@ module DatapathPipelined (
         execute_state <= '{
           pc: decode_state.pc,
           insn: decode_state.insn,
-          cycle_status: branch_taken > 0 ? CYCLE_TAKEN_BRANCH : decode_state.cycle_status,
+          cycle_status: illegal_insn ? CYCLE_INVALID : branch_taken > 0 ? CYCLE_TAKEN_BRANCH : decode_state.cycle_status,
           rs1_data: regfile_rs1_data,
           rs2_data: regfile_rs2_data
         };
