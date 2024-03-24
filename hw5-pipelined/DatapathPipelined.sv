@@ -56,9 +56,25 @@ module RegFile (
   logic [`REG_SIZE] regs[NumRegs];
 
   // TODO: your code here
+  logic rs1_bypass;
+  logic rs2_bypass;
+
+  always_comb begin
+    if ((rs1 == rd) && rd != 0) begin
+      rs1_bypass = rd_data;
+    end else begin
+      rs1_bypass = regs[rs1];
+    end
+    if ((rs2 == rd) && rd != 0) begin
+      rs2_bypass = rd_data;
+    end else begin
+      rs2_bypass = regs[rs2];
+    end
+  end
+
   assign regs[0] = 32'd0;
-  assign rs1_data = regs[rs1];
-  assign rs2_data = regs[rs2];
+  assign rs1_data = rs1_bypass;
+  assign rs2_data = rs2_bypass;
 
   generate for (i = 0; i < NumRegs; i++) begin: g_loop
     always_ff @(posedge clk) begin
