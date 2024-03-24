@@ -289,7 +289,7 @@ module DatapathPipelined (
   // I - short immediates and loads
   wire [11:0] d_imm_i;
   assign d_imm_i = decode_state.insn[31:20];
-  wire [ 4:0] d_imm_shamt = decode_state.insn[24:20];
+  wire [4:0] d_imm_shamt = decode_state.insn[24:20];
 
   // S - stores
   wire [11:0] d_imm_s;
@@ -331,18 +331,16 @@ module DatapathPipelined (
     halt = 1'b0;
     case (d_insn_opcode)
       OpcodeLui: begin
-
       end
       OpcodeRegImm: begin
-
+      end
+      OpcodeRegReg: begin
       end
       default: begin
+        illegal_insn = 1'b1;
       end
     endcase
   end
-
-
-
 
   /*****************/
   /* EXECUTE STAGE */
@@ -417,7 +415,10 @@ module DatapathPipelined (
   logic[31:0] e_bypass_rs1; 
   logic[31:0] e_bypass_rs2; 
 
-// MX bypass logic
+  // multiply
+  logic[63:0] product;
+
+  // MX bypass logic
   always_comb begin
     if ((e_insn_rs1 == m_insn_rd) && m_insn_rd != 0) begin
       e_bypass_rs1 = memory_state.alu_result;
@@ -452,19 +453,113 @@ module DatapathPipelined (
           3'b000: begin
             e_result = e_bypass_rs1 + e_imm_i_sext;
           end
+          // slti
+          3'b010: begin
+            e_result = ($signed(e_bypass_rs1) < $signed(e_imm_i_sext)) ? 32'd1 : 32'd0;
+          end
+          // sltiu
+          3'b011: begin
+            e_result = (e_bypass_rs1 < e_imm_i_sext) ? 32'd1 : 32'd0;
+          end
+          // xori
+          3'b100: begin
+            e_result = e_bypass_rs1 ^ e_imm_i_sext;
+          end
+          // ori
+          3'b110: begin
+            e_result = e_bypass_rs1 | e_imm_i_sext;
+          end
+          // andi
+          3'b111: begin
+            e_result = e_bypass_rs1 & e_imm_i_sext;
+          end
+          // slli
+          3'b001: begin
+            e_result = e_bypass_rs1 << e_imm_shamt;
+          end
+          // srli & srai
+          3'b101: begin
+            if (execute_state.insn[31:25] == 7'd0) begin
+              e_result = e_bypass_rs1 >> e_imm_shamt;
+            end else if (execute_state.insn[31:25] == 7'b0100000) begin
+              e_result = $signed(e_bypass_rs1) >>> e_imm_shamt;
+            end
+          end
           default: begin
           end
         endcase
       end
       OpcodeRegReg: begin
         case (execute_state.insn[14:12])
-          // add & sub
+          // add & sub & mul
           3'b000: begin
+            // add
             if (execute_state.insn[31:25] == 7'b0) begin
               e_result = e_bypass_rs1 + e_bypass_rs2;
-            end else begin
+            // sub
+            end else if (execute_state.insn[31:25] == 7'b0100000) begin
               e_result = e_bypass_rs1 - e_bypass_rs2;
+            // mul
+            end else if (execute_state.insn[31:25] == 7'd1) begin
+              product = {{32{1'b0}}, e_bypass_rs1} * {{32{1'b0}}, e_bypass_rs2};
+              e_result = product[31:0];
             end
+          end
+          // sll & mulh
+          3'b001: begin
+            // sll
+            if (execute_state.insn[31:25] == 7'd0) begin
+              e_result = e_bypass_rs1 << e_bypass_rs2[4:0];
+            end
+            // mulh
+            else if (execute_state.insn[31:25] == 7'd1) begin
+              product = $signed({{32{e_bypass_rs1[31]}}, e_bypass_rs1}) * $signed({{32{e_bypass_rs2[31]}}, e_bypass_rs2});
+              e_result = product[63:32];
+            end
+          end
+          // slt & mulhsu
+          3'b010: begin
+            // slt
+            if (execute_state.insn[31:25] == 7'd0) begin
+              e_result = ($signed(e_bypass_rs1) < $signed(e_bypass_rs2)) ? 32'd1 : 32'd0;
+            end
+            // mulhsu
+            else if (execute_state.insn[31:25] == 7'd1) begin
+              product = $signed({{32{e_bypass_rs1[31]}}, e_bypass_rs1}) * ({{32{1'b0}}, e_bypass_rs2});
+              e_result = product[63:32];
+            end
+          end
+          // sltu & mulhu
+          3'b011: begin
+            // sltu
+            if (execute_state.insn[31:25] == 7'd0) begin
+              e_result = (e_bypass_rs1 < e_bypass_rs2) ? 32'd1 : 32'd0;
+            end
+            // mulhu
+            else if (execute_state.insn[31:25] == 7'd1) begin
+              product = ({{32{1'b0}}, e_bypass_rs1}) * ({{32{1'b0}}, e_bypass_rs2});
+              e_result = product[63:32];
+            end
+          end
+          // xor
+          3'b100: begin
+            e_result = e_bypass_rs1 ^ e_bypass_rs2;
+          end
+          // srl & sra
+          3'b101: begin
+            if (execute_state.insn[31:25] == 7'd0) begin
+              e_result = e_bypass_rs1 >> e_bypass_rs2[4:0];
+            end else if (execute_state.insn[31:25] == 7'b0100000) begin
+              e_result = $signed(e_bypass_rs1) >>> e_bypass_rs2[4:0];
+            end
+          end
+          // or
+          3'b110: begin
+            e_result = e_bypass_rs1 | e_bypass_rs2;
+          end
+          // and
+          3'b111: begin
+            e_result = e_bypass_rs1 & e_bypass_rs2;
           end
           default: begin
           end
@@ -614,26 +709,12 @@ module DatapathPipelined (
         regfile_we = 1;
       end
       OpcodeRegImm: begin
-        case (writeback_state.insn[14:12])
-          // addi
-          3'b000: begin
-            regfile_rd_data = writeback_state.alu_result;
-            regfile_we = 1;
-          end
-          default: begin
-          end
-        endcase
+        regfile_rd_data = writeback_state.alu_result;
+        regfile_we = 1;
       end
       OpcodeRegReg: begin
-        case (writeback_state.insn[14:12])
-          // add & sub
-          3'b000: begin
-            regfile_rd_data = writeback_state.alu_result;
-            regfile_we = 1;
-          end
-          default: begin
-          end
-        endcase
+        regfile_rd_data = writeback_state.alu_result;
+        regfile_we = 1;
       end
       default: begin
       end
@@ -643,9 +724,6 @@ module DatapathPipelined (
   assign trace_writeback_pc = writeback_state.pc;
   assign trace_writeback_insn = writeback_state.insn;
   assign trace_writeback_cycle_status = writeback_state.cycle_status;
-
-
-
 
 endmodule
 
