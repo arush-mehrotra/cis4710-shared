@@ -56,8 +56,8 @@ module RegFile (
   logic [`REG_SIZE] regs[NumRegs];
 
   // TODO: your code here
-  logic rs1_bypass;
-  logic rs2_bypass;
+  logic[31:0] rs1_bypass;
+  logic[31:0] rs2_bypass;
 
   always_comb begin
     if ((rs1 == rd) && rd != 0) begin
