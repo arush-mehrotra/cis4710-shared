@@ -332,7 +332,7 @@ module DatapathPipelined (
   // setup for register file write
   always_comb begin
     illegal_insn = 1'b0;
-    halt = 1'b0;
+    // halt = 1'b0;
     if (decode_state.cycle_status == CYCLE_NO_STALL) begin
      case (d_insn_opcode)
         OpcodeLui: begin
@@ -482,7 +482,7 @@ module DatapathPipelined (
         end
         OpcodeEnviron: begin
           if(decode_state.insn[31:7] == 25'd0) begin
-            halt = 1'b1;
+            // halt = 1'b1;
           end else begin
             illegal_insn = 1'b1;
           end
@@ -579,21 +579,21 @@ module DatapathPipelined (
     e_bypass_rs1 = 0;
     e_bypass_rs2 = 0;
     if (execute_state.cycle_status == CYCLE_NO_STALL) begin
-      if ((e_insn_rs1 == m_insn_rd) && m_insn_rd != 0) begin
+      if ((e_insn_rs1 == m_insn_rd) && m_insn_rd != 0 && memory_state.cycle_status == CYCLE_NO_STALL && memory_state.insn[6:0] != OpcodeBranch) begin
         e_bypass_rs1 = memory_state.alu_result;
       end else begin
         // WX bypass logic
-        if ((e_insn_rs1 == w_insn_rd) && w_insn_rd != 0) begin
+        if ((e_insn_rs1 == w_insn_rd) && w_insn_rd != 0 && writeback_state.cycle_status == CYCLE_NO_STALL && writeback_state.insn[6:0] != OpcodeBranch) begin
           e_bypass_rs1 = writeback_state.alu_result;
         end else begin
           e_bypass_rs1 = execute_state.rs1_data;
         end
       end 
-      if ((e_insn_rs2 == m_insn_rd) && m_insn_rd != 0) begin
+      if ((e_insn_rs2 == m_insn_rd) && m_insn_rd != 0 && memory_state.cycle_status == CYCLE_NO_STALL && memory_state.insn[6:0] != OpcodeBranch) begin
         e_bypass_rs2 = memory_state.alu_result;
       end else begin
         // WX bypass logic
-        if ((e_insn_rs2 == w_insn_rd) && w_insn_rd != 0) begin
+        if ((e_insn_rs2 == w_insn_rd) && w_insn_rd != 0 && writeback_state.cycle_status == CYCLE_NO_STALL && writeback_state.insn[6:0] != OpcodeBranch) begin
           e_bypass_rs2 = writeback_state.alu_result;
         end else begin
           e_bypass_rs2 = execute_state.rs2_data;
@@ -916,8 +916,10 @@ module DatapathPipelined (
   wire [`REG_SIZE] w_imm_j_sext = {{11{w_imm_j[20]}}, w_imm_j[20:0]};
 
   always_comb begin
-    if (writeback_state.cycle_status == CYCLE_NO_STALL) begin
       regfile_we = 1'b0;
+      halt = 1'b0;
+      regfile_rd_data = 0;
+    if (writeback_state.cycle_status == CYCLE_NO_STALL) begin
       case (w_insn_opcode)
         OpcodeLui: begin
           regfile_rd_data = writeback_state.alu_result;
@@ -930,6 +932,11 @@ module DatapathPipelined (
         OpcodeRegReg: begin
           regfile_rd_data = writeback_state.alu_result;
           regfile_we = 1;
+        end
+        OpcodeEnviron: begin
+          if(writeback_state.insn[31:7] == 25'd0) begin
+            halt = 1'b1;
+          end
         end
         default: begin
         end
