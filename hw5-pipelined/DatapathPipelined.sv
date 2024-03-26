@@ -142,6 +142,8 @@ typedef struct packed {
   logic [`INSN_SIZE] insn;
   cycle_status_e cycle_status;
   logic [`REG_SIZE] alu_result;
+  // relevant only for stores
+  logic [`REG_SIZE] rs2_data;
 } stage_memory_t;
 
 /** state at the start of Writeback stage */
@@ -365,6 +367,10 @@ module DatapathPipelined (
             end
           end
           OpcodeStore: begin
+            // handle WM bypass (we don't want to stall)
+            if (d_insn_rs2 == e_insn_rd) begin
+              loadStall = 1'b0;
+            end
           end
           OpcodeJal: begin
             loadStall = 1'b0;
@@ -563,6 +569,22 @@ module DatapathPipelined (
             end
             // lhu
             3'b101: begin
+            end
+            default: begin
+              illegal_insn = 1'b1;
+            end
+          endcase
+        end
+        OpcodeStore: begin
+          case (decode_state.insn[14:12])
+            // sb
+            3'b000: begin
+            end
+            // sh
+            3'b001: begin
+            end
+            // sw
+            3'b010: begin
             end
             default: begin
               illegal_insn = 1'b1;
@@ -870,6 +892,9 @@ module DatapathPipelined (
         OpcodeLoad: begin
           e_result = e_bypass_rs1 + e_imm_i_sext;
         end
+        OpcodeStore: begin
+          e_result = e_bypass_rs1 + e_imm_s_sext;
+        end
         default: begin
         end
       endcase
@@ -886,7 +911,8 @@ module DatapathPipelined (
         pc: 0,
         insn: 0,
         cycle_status: CYCLE_RESET,
-        alu_result: 0
+        alu_result: 0,
+        rs2_data: 0
       };
     end else begin
       begin
@@ -894,7 +920,10 @@ module DatapathPipelined (
           pc: execute_state.pc,
           insn: execute_state.insn,
           cycle_status:  execute_state.cycle_status,
-          alu_result: e_result
+          alu_result: e_result,
+          // relevant for stores -> WM bypass
+          rs2_data: writeback_state.insn[6:0] == OpcodeLoad && writeback_state.cycle_status == CYCLE_NO_STALL && 
+          w_insn_rd == m_insn_rs2 ? writeback_state.alu_result : execute_state.rs2_data
         };
       end
     end
@@ -941,10 +970,20 @@ module DatapathPipelined (
   wire [`REG_SIZE] m_imm_b_sext = {{19{m_imm_b[12]}}, m_imm_b[12:0]};
   wire [`REG_SIZE] m_imm_j_sext = {{11{m_imm_j[20]}}, m_imm_j[20:0]};
 
+  // what we send to the writeback stage 
   logic [31:0] memoryResult;
 
+  // memory we sent to dmem
   logic[31:0] tempAddr;
   assign addr_to_dmem = tempAddr;
+
+  // write enable for dmem
+  logic[3:0] tempWe;
+  assign store_we_to_dmem = tempWe;
+
+  // value we store in dmem
+  logic[31:0] tempStore;
+  assign store_data_to_dmem = tempStore;
 
   always_comb begin
     memoryResult = memory_state.alu_result;
@@ -1014,6 +1053,47 @@ module DatapathPipelined (
                 end else begin
                   memoryResult = {{16{1'b0}}, load_data_from_dmem[31:16]};
                 end
+              end
+            end
+            default: begin
+            end
+          endcase
+        end
+        OpcodeStore: begin
+          case (memory_state.insn[14:12]) 
+            // sb
+            3'b000: begin
+              tempAddr = (memory_state.alu_result & ~32'd3);
+              if (memory_state.alu_result[1:0] == 2'b00) begin
+                tempWe = 4'b0001;
+                tempStore = {load_data_from_dmem[31:8], memory_state.rs2_data[7:0]};
+              end else if (memory_state.alu_result[1:0] == 2'b01) begin
+                tempWe = 4'b0010;
+                tempStore = {load_data_from_dmem[31:16], memory_state.rs2_data[7:0], load_data_from_dmem[7:0]};
+              end else if (memory_state.alu_result[1:0] == 2'b10) begin
+                tempWe = 4'b0100;
+                tempStore = {load_data_from_dmem[31:24], memory_state.rs2_data[7:0], load_data_from_dmem[15:0]};
+              end else begin
+                tempWe = 4'b1000;
+                tempStore = {memory_state.rs2_data[7:0], load_data_from_dmem[23:0]};
+              end
+            end
+            3'b001: begin
+              if (memory_state.alu_result[0] == 1'b0) begin
+                tempAddr = (memory_state.alu_result & ~32'd3);
+                if (memory_state.alu_result[1] == 1'b0) begin
+                  tempWe = 4'b0011;
+                  tempStore = {16'b0, memory_state.rs2_data[15:0]};
+                end else begin
+                  tempWe = 4'b1100;
+                  tempStore = {memory_state.rs2_data[15:0], 16'b0};
+                end
+              end
+            end
+            3'b010: begin
+              if (memory_state.alu_result[1:0] == 2'b00) begin
+                tempWe = 4'b1111;
+                tempStore = memory_state.rs2_data;
               end
             end
             default: begin
@@ -1118,6 +1198,8 @@ module DatapathPipelined (
         OpcodeLoad: begin
           regfile_rd_data = writeback_state.alu_result;
           regfile_we = 1;
+        end
+        OpcodeStore: begin
         end
         default: begin
         end
