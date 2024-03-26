@@ -177,17 +177,17 @@ module DatapathPipelined (
 
   // opcodes - see section 19 of RiscV spec
   localparam bit [`OPCODE_SIZE] OpcodeLoad = 7'b00_000_11;
-  // localparam bit [`OPCODE_SIZE] OpcodeStore = 7'b01_000_11;
+  localparam bit [`OPCODE_SIZE] OpcodeStore = 7'b01_000_11;
   localparam bit [`OPCODE_SIZE] OpcodeBranch = 7'b11_000_11;
-  // localparam bit [`OPCODE_SIZE] OpcodeJalr = 7'b11_001_11;
-  // localparam bit [`OPCODE_SIZE] OpcodeMiscMem = 7'b00_011_11;
-  // localparam bit [`OPCODE_SIZE] OpcodeJal = 7'b11_011_11;
+  localparam bit [`OPCODE_SIZE] OpcodeJalr = 7'b11_001_11;
+  localparam bit [`OPCODE_SIZE] OpcodeMiscMem = 7'b00_011_11;
+  localparam bit [`OPCODE_SIZE] OpcodeJal = 7'b11_011_11;
 
   localparam bit [`OPCODE_SIZE] OpcodeRegImm = 7'b00_100_11;
   localparam bit [`OPCODE_SIZE] OpcodeRegReg = 7'b01_100_11;
   localparam bit [`OPCODE_SIZE] OpcodeEnviron = 7'b11_100_11;
 
-  // localparam bit [`OPCODE_SIZE] OpcodeAuipc = 7'b00_101_11;
+  localparam bit [`OPCODE_SIZE] OpcodeAuipc = 7'b00_101_11;
   localparam bit [`OPCODE_SIZE] OpcodeLui = 7'b01_101_11;
 
   // cycle counter, not really part of any stage but useful for orienting within GtkWave
@@ -345,6 +345,47 @@ module DatapathPipelined (
     if (execute_state.insn[6:0] == OpcodeLoad && execute_state.cycle_status == CYCLE_NO_STALL) begin
       if (d_insn_rs1 == e_insn_rd || d_insn_rs2 == e_insn_rd) begin
         loadStall = 1'b1;
+        case (decode_state.insn[6:0])
+          OpcodeLui: begin
+            loadStall = 1'b0;
+          end
+          OpcodeAuipc: begin
+            loadStall = 1'b0;
+          end
+          OpcodeRegImm: begin
+            if (d_insn_rs1 != e_insn_rd) begin
+              loadStall = 1'b0;
+            end
+          end
+          OpcodeRegReg: begin
+          end
+          OpcodeLoad: begin
+            if (d_insn_rs1 != e_insn_rd) begin
+              loadStall = 1'b0;
+            end
+          end
+          OpcodeStore: begin
+          end
+          OpcodeJal: begin
+            loadStall = 1'b0;
+          end
+          OpcodeJalr: begin
+            if (d_insn_rs1 != e_insn_rd) begin
+              loadStall = 1'b0;
+            end
+          end
+          OpcodeBranch: begin
+          end
+          OpcodeEnviron: begin
+            loadStall = 1'b0;
+          end
+          OpcodeMiscMem: begin
+            loadStall = 1'b0;
+          end
+          default: begin
+            loadStall = 1'b0;
+          end
+        endcase
       end
     end
   end
