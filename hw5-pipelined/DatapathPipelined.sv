@@ -922,8 +922,7 @@ module DatapathPipelined (
           cycle_status:  execute_state.cycle_status,
           alu_result: e_result,
           // relevant for stores -> WM bypass
-          rs2_data: writeback_state.insn[6:0] == OpcodeLoad && writeback_state.cycle_status == CYCLE_NO_STALL && 
-          w_insn_rd == m_insn_rs2 ? writeback_state.alu_result : execute_state.rs2_data
+          rs2_data: execute_state.rs2_data
         };
       end
     end
@@ -984,6 +983,16 @@ module DatapathPipelined (
   // value we store in dmem
   logic[31:0] tempStore;
   assign store_data_to_dmem = tempStore;
+
+  // bypass value
+  logic[31:0] rs2_bypass;
+  always_comb begin
+    rs2_bypass = memory_state.rs2_data;
+    if (writeback_state.cycle_status == CYCLE_NO_STALL && writeback_state.insn[6:0] == OpcodeLoad &&
+    w_insn_rd == m_insn_rs2) begin
+      rs2_bypass = writeback_state.alu_result;
+    end
+  end
 
   always_comb begin
     memoryResult = memory_state.alu_result;
@@ -1066,16 +1075,16 @@ module DatapathPipelined (
               tempAddr = (memory_state.alu_result & ~32'd3);
               if (memory_state.alu_result[1:0] == 2'b00) begin
                 tempWe = 4'b0001;
-                tempStore = {load_data_from_dmem[31:8], memory_state.rs2_data[7:0]};
+                tempStore = {load_data_from_dmem[31:8], rs2_bypass[7:0]};
               end else if (memory_state.alu_result[1:0] == 2'b01) begin
                 tempWe = 4'b0010;
-                tempStore = {load_data_from_dmem[31:16], memory_state.rs2_data[7:0], load_data_from_dmem[7:0]};
+                tempStore = {load_data_from_dmem[31:16], rs2_bypass[7:0], load_data_from_dmem[7:0]};
               end else if (memory_state.alu_result[1:0] == 2'b10) begin
                 tempWe = 4'b0100;
-                tempStore = {load_data_from_dmem[31:24], memory_state.rs2_data[7:0], load_data_from_dmem[15:0]};
+                tempStore = {load_data_from_dmem[31:24], rs2_bypass[7:0], load_data_from_dmem[15:0]};
               end else begin
                 tempWe = 4'b1000;
-                tempStore = {memory_state.rs2_data[7:0], load_data_from_dmem[23:0]};
+                tempStore = {rs2_bypass[7:0], load_data_from_dmem[23:0]};
               end
             end
             3'b001: begin
@@ -1083,17 +1092,17 @@ module DatapathPipelined (
                 tempAddr = (memory_state.alu_result & ~32'd3);
                 if (memory_state.alu_result[1] == 1'b0) begin
                   tempWe = 4'b0011;
-                  tempStore = {16'b0, memory_state.rs2_data[15:0]};
+                  tempStore = {16'b0, rs2_bypass[15:0]};
                 end else begin
                   tempWe = 4'b1100;
-                  tempStore = {memory_state.rs2_data[15:0], 16'b0};
+                  tempStore = {rs2_bypass[15:0], 16'b0};
                 end
               end
             end
             3'b010: begin
               if (memory_state.alu_result[1:0] == 2'b00) begin
                 tempWe = 4'b1111;
-                tempStore = memory_state.rs2_data;
+                tempStore = rs2_bypass;
               end
             end
             default: begin
