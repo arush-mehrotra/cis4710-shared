@@ -368,7 +368,7 @@ module DatapathPipelined (
           end
           OpcodeStore: begin
             // handle WM bypass (we don't want to stall)
-            if (d_insn_rs2 == e_insn_rd) begin
+            if (d_insn_rs2 == e_insn_rd && d_insn_rs1 != e_insn_rd) begin
               loadStall = 1'b0;
             end
           end
@@ -922,7 +922,7 @@ module DatapathPipelined (
           cycle_status:  execute_state.cycle_status,
           alu_result: e_result,
           // relevant for stores -> WM bypass
-          rs2_data: execute_state.rs2_data
+          rs2_data: e_bypass_rs2
         };
       end
     end
@@ -1101,6 +1101,7 @@ module DatapathPipelined (
             end
             3'b010: begin
               if (memory_state.alu_result[1:0] == 2'b00) begin
+                tempAddr = memory_state.alu_result;
                 tempWe = 4'b1111;
                 tempStore = rs2_bypass;
               end
