@@ -221,6 +221,8 @@ module DatapathPipelined (
       f_pc_current <= f_pc_current;
     end else if (fenceStall) begin
       f_pc_current <= f_pc_current;
+    end else if (divStall) begin
+      f_pc_current <= f_pc_current;
     end
     else begin
       f_cycle_status <= CYCLE_NO_STALL;
@@ -265,6 +267,12 @@ module DatapathPipelined (
         cycle_status: decode_state.cycle_status
       };
     end else if (fenceStall) begin
+      decode_state <= '{
+        pc: decode_state.pc,
+        insn: decode_state.insn,
+        cycle_status: decode_state.cycle_status
+      };
+    end else if (divStall) begin
       decode_state <= '{
         pc: decode_state.pc,
         insn: decode_state.insn,
@@ -415,6 +423,57 @@ module DatapathPipelined (
     end
   end
 
+  logic divStall;
+  always_comb begin
+    divStall = 1'b0;
+    if (execute_state.insn[6:0] == OpcodeRegReg && execute_state.insn[14:12] >= 4 && execute_state.insn[31:25] == 1 && execute_state.cycle_status == CYCLE_NO_STALL) begin
+      case (decode_state.insn[6:0])
+        OpcodeLui: begin
+        end
+        OpcodeAuipc: begin
+        end
+        OpcodeRegImm: begin
+          if (d_insn_rs1 == e_insn_rd) begin
+            divStall = 1'b1;
+          end
+        end
+        OpcodeRegReg: begin
+          if (d_insn_rs1 == e_insn_rd || d_insn_rs2 == e_insn_rd) begin
+            divStall = 1'b1;
+          end
+        end
+        OpcodeLoad: begin
+          if (d_insn_rs1 == e_insn_rd) begin
+            divStall = 1'b1;
+          end
+        end
+        OpcodeStore: begin
+          if (d_insn_rs1 == e_insn_rd) begin
+            divStall = 1'b1;
+          end
+        end
+        OpcodeJal: begin
+        end
+        OpcodeJalr: begin
+          if (d_insn_rs1 == e_insn_rd) begin
+            divStall = 1'b1;
+          end
+        end
+        OpcodeBranch: begin
+          if (d_insn_rs1 == e_insn_rd || d_insn_rs2 == e_insn_rd) begin
+            divStall = 1'b1;
+          end
+        end
+        OpcodeEnviron: begin
+        end
+        OpcodeMiscMem: begin
+        end
+        default: begin
+        end
+      endcase
+    end
+  end
+
   // setup for register file write
   always_comb begin
     illegal_insn = 1'b0;
@@ -508,21 +567,33 @@ module DatapathPipelined (
             end
             // xor
             3'b100: begin
-
+              if (decode_state.insn[31:25] == 7'd0 || decode_state.insn[31:25] == 7'd1) begin
+              end else begin
+                illegal_insn = 1'b1;
+              end
             end
             // srl & sra
             3'b101: begin
               if (decode_state.insn[31:25] == 7'd0) begin
               end else if (decode_state.insn[31:25] == 7'b0100000) begin
+              end else if (decode_state.insn[31:25] == 7'd1) begin
               end else begin
                 illegal_insn = 1'b1;
               end
             end
             // or
             3'b110: begin
+              if (decode_state.insn[31:25] == 7'd0 || decode_state.insn[31:25] == 7'd1) begin
+              end else begin
+                illegal_insn = 1'b1;
+              end
             end
             // and
             3'b111: begin
+              if (decode_state.insn[31:25] == 7'd0 || decode_state.insn[31:25] == 7'd1) begin
+              end else begin
+                illegal_insn = 1'b1;
+              end
             end
             default: begin
               illegal_insn = 1'b1;
@@ -657,6 +728,14 @@ module DatapathPipelined (
         rs1_data: 0,
         rs2_data: 0
       };
+    end else if (divStall) begin
+      execute_state <= '{
+        pc: 0,
+        insn: 0,
+        cycle_status: CYCLE_DIV2USE,
+        rs1_data: 0,
+        rs2_data: 0
+      };
     end
     else begin
         execute_state <= '{
@@ -716,6 +795,9 @@ module DatapathPipelined (
   logic[31:0] e_bypass_rs1; 
   logic[31:0] e_bypass_rs2; 
 
+  logic[31:0] e_unsigned_bypass_rs1 = e_bypass_rs1[31] ? ~e_bypass_rs1 + 1: e_bypass_rs1;
+  logic[31:0] e_unsigned_bypass_rs2 = e_bypass_rs2[31] ? ~e_bypass_rs2 + 1: e_bypass_rs2;
+
   // multiply
   logic[63:0] product;
 
@@ -750,6 +832,15 @@ module DatapathPipelined (
       end
     end
   end
+
+  logic[31:0] remainder1, remainder2, remainder3, remainder4;
+  logic[31:0] quotient1, quotient2, quotient3, quotient4;
+
+  // divider / remainder
+  divider_unsigned_pipelined div(.clk(clk), .rst(rst), .i_dividend(e_unsigned_bypass_rs1), .i_divisor(e_unsigned_bypass_rs2), .o_quotient(quotient1), .o_remainder(remainder1));
+  divider_unsigned_pipelined divu(.clk(clk), .rst(rst), .i_dividend(e_bypass_rs1), .i_divisor(e_bypass_rs2), .o_quotient(quotient2), .o_remainder(remainder2));
+  divider_unsigned_pipelined rem(.clk(clk), .rst(rst), .i_dividend(e_unsigned_bypass_rs1), .i_divisor(e_unsigned_bypass_rs2), .o_quotient(quotient3), .o_remainder(remainder3));
+  divider_unsigned_pipelined remu(.clk(clk), .rst(rst), .i_dividend(e_bypass_rs1), .i_divisor(e_bypass_rs2), .o_quotient(quotient4), .o_remainder(remainder4));
 
   always_comb begin
     branch_bool = 0;
@@ -855,9 +946,15 @@ module DatapathPipelined (
                 e_result = product[63:32];
               end
             end
-            // xor
+            // xor & div
             3'b100: begin
-              e_result = e_bypass_rs1 ^ e_bypass_rs2;
+              // xor
+              if (execute_state.insn[31:25] == 7'd0) begin
+                e_result = e_bypass_rs1 ^ e_bypass_rs2;
+              // div
+              end else if (execute_state.insn[31:25] == 7'd1) begin
+                e_result = e_bypass_rs1;
+              end
             end
             // srl & sra
             3'b101: begin
@@ -865,15 +962,31 @@ module DatapathPipelined (
                 e_result = e_bypass_rs1 >> e_bypass_rs2[4:0];
               end else if (execute_state.insn[31:25] == 7'b0100000) begin
                 e_result = $signed(e_bypass_rs1) >>> e_bypass_rs2[4:0];
+              end else if (execute_state.insn[31:25] == 7'd1) begin
+                e_result = e_bypass_rs1;
               end
             end
-            // or
+            // or & rem
             3'b110: begin
-              e_result = e_bypass_rs1 | e_bypass_rs2;
+              // or
+              if (execute_state.insn[31:25] == 7'd0) begin
+                e_result = e_bypass_rs1 | e_bypass_rs2;
+              end
+              // rem
+              else if (execute_state.insn[31:25] == 7'd1) begin
+                e_result = e_bypass_rs1;
+              end
             end
-            // and
+            // and & remu
             3'b111: begin
-              e_result = e_bypass_rs1 & e_bypass_rs2;
+              // and
+              if (execute_state.insn[31:25] == 7'd0) begin
+                e_result = e_bypass_rs1 & e_bypass_rs2;
+              end
+              // remu
+              else if (execute_state.insn[31:25] == 7'd1) begin
+                e_result = e_bypass_rs1;
+              end
             end
             default: begin
             end
@@ -1044,6 +1157,70 @@ module DatapathPipelined (
         OpcodeRegImm: begin
         end
         OpcodeRegReg: begin
+          case (memory_state.insn[14:12])
+            3'b100:
+              if (memory_state.insn[31:25] == 7'd1) begin
+                if (memory_state.rs2_data == 0) begin
+                  memoryResult = ~(32'd0);
+                end else begin
+                  if (memory_state.alu_result[31] != memory_state.rs2_data[31]) begin
+                    memoryResult = ~(quotient1) + 1;
+                  end else begin
+                    if (memory_state.alu_result == 32'b10000000000000000000000000000000) begin
+                      if (memory_state.rs2_data == ~(32'd0)) begin
+                        memoryResult = memory_state.alu_result;
+                      end else begin
+                        memoryResult = quotient1;
+                      end
+                    end else begin
+                      memoryResult = quotient1;
+                    end
+                  end
+                end
+              end
+            3'b101:
+              if (memory_state.insn[31:25] == 7'd1) begin
+                if (memory_state.rs2_data == 0) begin
+                  memoryResult = ~(32'd0);
+                end else begin
+                  memoryResult = quotient2;
+                end
+              end
+            3'b110:
+              if (memory_state.insn[31:25] == 7'd1) begin
+                if (memory_state.rs2_data == 0) begin
+                  memoryResult = memory_state.alu_result;
+                end else begin
+                  if (memory_state.alu_result[31] == 0 & memory_state.rs2_data[31] == 0) begin
+                    memoryResult = remainder3;
+                  end else if (memory_state.alu_result[31] == 1 & memory_state.rs2_data[31] == 0) begin
+                    memoryResult = ~(remainder3) + 1;
+                  end else if (memory_state.alu_result[31] == 0 & memory_state.rs2_data[31] == 1) begin
+                    memoryResult = remainder3;
+                  end else begin
+                    if (memory_state.alu_result == 32'b10000000000000000000000000000000) begin
+                      if (memory_state.rs2_data == ~(32'd0)) begin
+                        memoryResult = 0;
+                      end else begin
+                        memoryResult = ~(remainder3) + 1;
+                      end
+                    end else begin
+                      memoryResult = ~(remainder3) + 1;
+                    end
+                  end
+                end
+              end
+            3'b111:
+              if (memory_state.insn[31:25] == 7'd1) begin
+                if (memory_state.rs2_data == 0) begin
+                  memoryResult = memory_state.alu_result;
+                end else begin
+                  memoryResult = remainder4;
+                end
+              end
+              default: begin
+              end
+          endcase
         end
         OpcodeBranch: begin
         end
