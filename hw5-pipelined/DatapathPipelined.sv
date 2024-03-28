@@ -219,6 +219,8 @@ module DatapathPipelined (
       f_cycle_status <= CYCLE_NO_STALL;
     end else if (loadStall) begin
       f_pc_current <= f_pc_current;
+    end else if (fenceStall) begin
+      f_pc_current <= f_pc_current;
     end
     else begin
       f_cycle_status <= CYCLE_NO_STALL;
@@ -257,6 +259,12 @@ module DatapathPipelined (
         cycle_status: CYCLE_RESET
       };
     end else if (loadStall) begin
+      decode_state <= '{
+        pc: decode_state.pc,
+        insn: decode_state.insn,
+        cycle_status: decode_state.cycle_status
+      };
+    end else if (fenceStall) begin
       decode_state <= '{
         pc: decode_state.pc,
         insn: decode_state.insn,
@@ -392,6 +400,17 @@ module DatapathPipelined (
             loadStall = 1'b0;
           end
         endcase
+      end
+    end
+  end
+
+  logic fenceStall;
+
+  always_comb begin
+    fenceStall = 1'b0;
+    if ((execute_state.insn[6:0] == OpcodeStore && execute_state.cycle_status == CYCLE_NO_STALL) || (memory_state.insn[6:0] == OpcodeStore && memory_state.cycle_status == CYCLE_NO_STALL)) begin
+      if (decode_state.insn[6:0] == OpcodeMiscMem && (decode_state.insn[14:12] == 3'b000 || decode_state.insn[14:12] == 3'b001)) begin
+        fenceStall = 1'b1;
       end
     end
   end
@@ -591,6 +610,17 @@ module DatapathPipelined (
             end
           endcase
         end
+        OpcodeMiscMem: begin
+          case (decode_state.insn[14:12])
+            3'b000: begin
+            end
+            3'b001: begin
+            end
+            default: begin
+              illegal_insn = 1'b1;
+            end
+          endcase
+        end
         default: begin
           illegal_insn = 1'b1;
         end
@@ -616,6 +646,14 @@ module DatapathPipelined (
         pc: 0,
         insn: 0,
         cycle_status: CYCLE_LOAD2USE,
+        rs1_data: 0,
+        rs2_data: 0
+      };
+    end else if (fenceStall) begin
+      execute_state <= '{
+        pc: 0,
+        insn: 0,
+        cycle_status: CYCLE_FENCEI,
         rs1_data: 0,
         rs2_data: 0
       };
@@ -895,6 +933,8 @@ module DatapathPipelined (
         OpcodeStore: begin
           e_result = e_bypass_rs1 + e_imm_s_sext;
         end
+        OpcodeMiscMem: begin
+        end
         default: begin
         end
       endcase
@@ -1110,6 +1150,8 @@ module DatapathPipelined (
             end
           endcase
         end
+        OpcodeMiscMem: begin
+        end
         default: begin
         end
       endcase
@@ -1210,6 +1252,8 @@ module DatapathPipelined (
           regfile_we = 1;
         end
         OpcodeStore: begin
+        end
+        OpcodeMiscMem: begin
         end
         default: begin
         end
