@@ -694,6 +694,16 @@ module DatapathPipelined (
             end
           endcase
         end
+        OpcodeAuipc: begin
+        end
+        OpcodeJal: begin
+        end
+        OpcodeJalr: begin
+          if (decode_state.insn[14:12] == 0) begin
+          end else begin
+            illegal_insn = 1'b1;
+          end
+        end
         default: begin
           illegal_insn = 1'b1;
         end
@@ -814,12 +824,12 @@ module DatapathPipelined (
     e_unsigned_bypass_rs1 = 0;
     e_unsigned_bypass_rs2 = 0;
     if (execute_state.cycle_status == CYCLE_NO_STALL) begin
-      if ((e_insn_rs1 == m_insn_rd) && m_insn_rd != 0 && memory_state.cycle_status == CYCLE_NO_STALL && memory_state.insn[6:0] != OpcodeBranch) begin
+      if ((e_insn_rs1 == m_insn_rd) && m_insn_rd != 0 && memory_state.cycle_status == CYCLE_NO_STALL && memory_state.insn[6:0] != OpcodeBranch && memory_state.insn[6:0] != OpcodeStore && memory_state.insn[6:0] != OpcodeEnviron && memory_state.insn[6:0] != OpcodeMiscMem) begin
         e_bypass_rs1 = memory_state.alu_result;
         e_unsigned_bypass_rs1 = e_bypass_rs1[31] ? ~e_bypass_rs1 + 1: e_bypass_rs1;
       end else begin
         // WX bypass logic
-        if ((e_insn_rs1 == w_insn_rd) && w_insn_rd != 0 && writeback_state.cycle_status == CYCLE_NO_STALL && writeback_state.insn[6:0] != OpcodeBranch) begin
+        if ((e_insn_rs1 == w_insn_rd) && w_insn_rd != 0 && writeback_state.cycle_status == CYCLE_NO_STALL && writeback_state.insn[6:0] != OpcodeBranch && memory_state.insn[6:0] != OpcodeStore && memory_state.insn[6:0] != OpcodeEnviron && memory_state.insn[6:0] != OpcodeMiscMem) begin
           e_bypass_rs1 = writeback_state.alu_result;
           e_unsigned_bypass_rs1 = e_bypass_rs1[31] ? ~e_bypass_rs1 + 1: e_bypass_rs1;
         end else begin
@@ -827,12 +837,12 @@ module DatapathPipelined (
           e_unsigned_bypass_rs1 = e_bypass_rs1[31] ? ~e_bypass_rs1 + 1: e_bypass_rs1;
         end
       end 
-      if ((e_insn_rs2 == m_insn_rd) && m_insn_rd != 0 && memory_state.cycle_status == CYCLE_NO_STALL && memory_state.insn[6:0] != OpcodeBranch) begin
+      if ((e_insn_rs2 == m_insn_rd) && m_insn_rd != 0 && memory_state.cycle_status == CYCLE_NO_STALL && memory_state.insn[6:0] != OpcodeBranch && memory_state.insn[6:0] != OpcodeStore && memory_state.insn[6:0] != OpcodeEnviron && memory_state.insn[6:0] != OpcodeMiscMem) begin
         e_bypass_rs2 = memory_state.alu_result;
         e_unsigned_bypass_rs2 = e_bypass_rs2[31] ? ~e_bypass_rs2 + 1: e_bypass_rs2;
       end else begin
         // WX bypass logic
-        if ((e_insn_rs2 == w_insn_rd) && w_insn_rd != 0 && writeback_state.cycle_status == CYCLE_NO_STALL && writeback_state.insn[6:0] != OpcodeBranch) begin
+        if ((e_insn_rs2 == w_insn_rd) && w_insn_rd != 0 && writeback_state.cycle_status == CYCLE_NO_STALL && writeback_state.insn[6:0] != OpcodeBranch && memory_state.insn[6:0] != OpcodeStore && memory_state.insn[6:0] != OpcodeEnviron && memory_state.insn[6:0] != OpcodeMiscMem) begin
           e_bypass_rs2 = writeback_state.alu_result;
           e_unsigned_bypass_rs2 = e_bypass_rs2[31] ? ~e_bypass_rs2 + 1: e_bypass_rs2;
         end else begin
@@ -1057,6 +1067,19 @@ module DatapathPipelined (
           e_result = e_bypass_rs1 + e_imm_s_sext;
         end
         OpcodeMiscMem: begin
+        end
+        OpcodeAuipc: begin
+          e_result = execute_state.pc + {execute_state.insn[31:12], 12'b0};
+        end
+        OpcodeJal: begin
+          e_result = execute_state.pc + 4;
+          branch_bool = 1;
+          branch_taken = execute_state.pc + e_imm_j_sext;
+        end
+        OpcodeJalr: begin
+          e_result = execute_state.pc + 4;
+          branch_bool = 1;
+          branch_taken = (e_bypass_rs1 + e_imm_i_sext) & ~(32'd1);
         end
         default: begin
         end
@@ -1340,6 +1363,12 @@ module DatapathPipelined (
         end
         OpcodeMiscMem: begin
         end
+        OpcodeAuipc: begin
+        end
+        OpcodeJal: begin
+        end
+        OpcodeJalr: begin
+        end
         default: begin
         end
       endcase
@@ -1442,6 +1471,20 @@ module DatapathPipelined (
         OpcodeStore: begin
         end
         OpcodeMiscMem: begin
+        end
+        OpcodeAuipc: begin
+          regfile_rd_data = writeback_state.alu_result;
+          regfile_we = 1;
+        end
+        OpcodeJal: begin
+          regfile_rd_data = writeback_state.alu_result;
+          regfile_we = 1;
+        end
+        OpcodeJalr: begin
+          regfile_rd_data = writeback_state.alu_result;
+          regfile_we = 1;
+        end
+        OpcodeBranch: begin
         end
         default: begin
         end
