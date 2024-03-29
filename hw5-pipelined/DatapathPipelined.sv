@@ -1396,8 +1396,8 @@ module DatapathPipelined (
     end else begin
       begin
         writeback_state <= '{
-          pc: memory_state.cycle_status == CYCLE_TAKEN_BRANCH ? 0 : memory_state.pc,
-          insn: memory_state.cycle_status == CYCLE_TAKEN_BRANCH ? 0 : memory_state.insn,
+          pc: memory_state.cycle_status == (CYCLE_TAKEN_BRANCH | CYCLE_DIV2USE | CYCLE_FENCEI | CYCLE_INVALID | CYCLE_LOAD2USE) ? 0 : memory_state.pc,
+          insn: memory_state.cycle_status == (CYCLE_TAKEN_BRANCH | CYCLE_DIV2USE | CYCLE_FENCEI | CYCLE_INVALID | CYCLE_LOAD2USE) ? 0 : memory_state.insn,
           cycle_status:  memory_state.cycle_status,
           alu_result: memoryResult
         };
