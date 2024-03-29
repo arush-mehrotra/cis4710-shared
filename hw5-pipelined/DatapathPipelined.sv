@@ -56,27 +56,9 @@ module RegFile (
   logic [`REG_SIZE] regs[NumRegs];
 
   // TODO: your code here
-  logic[31:0] rs1_bypass;
-  logic[31:0] rs2_bypass;
-
-  always_comb begin
-    rs1_bypass = 0;
-    rs2_bypass = 0;
-    if ((rs1 == rd) && rd != 0) begin
-      rs1_bypass = rd_data;
-    end else begin
-      rs1_bypass = regs[rs1];
-    end
-    if ((rs2 == rd) && rd != 0) begin
-      rs2_bypass = rd_data;
-    end else begin
-      rs2_bypass = regs[rs2];
-    end
-  end
-
   assign regs[0] = 32'd0;
-  assign rs1_data = rs1_bypass;
-  assign rs2_data = rs2_bypass;
+  assign rs1_data = regs[rs1];
+  assign rs2_data = regs[rs2];
 
   generate for (i = 0; i < NumRegs; i++) begin: g_loop
     always_ff @(posedge clk) begin
@@ -354,6 +336,24 @@ module DatapathPipelined (
       .rs1_data(regfile_rs1_data),
       .rs2_data(regfile_rs2_data)
   );
+
+  // WD bypass
+  logic[31:0] wd_bypass_rs1;
+  logic[31:0] wd_bypass_rs2;
+
+  always_comb begin
+    wd_bypass_rs1 = regfile_rs1_data;
+    wd_bypass_rs2 = regfile_rs2_data;
+
+    if (w_insn_rd != 0 && writeback_state.cycle_status == CYCLE_NO_STALL && regfile_we == 1 && d_insn_rs1 == w_insn_rd) begin
+      wd_bypass_rs1 = writeback_state.alu_result;
+    end
+
+    if (w_insn_rd != 0 && writeback_state.cycle_status == CYCLE_NO_STALL && regfile_we == 1 && d_insn_rs2 == w_insn_rd) begin
+      wd_bypass_rs2 = writeback_state.alu_result;
+    end
+    
+  end
 
   logic illegal_insn;
 
@@ -754,8 +754,8 @@ module DatapathPipelined (
           pc: branch_bool > 0 ? 0 : decode_state.pc,
           insn: branch_bool > 0 ? 0 : decode_state.insn,
           cycle_status: illegal_insn ? CYCLE_INVALID : branch_bool > 0 ? CYCLE_TAKEN_BRANCH : decode_state.cycle_status,
-          rs1_data: regfile_rs1_data,
-          rs2_data: regfile_rs2_data
+          rs1_data: wd_bypass_rs1,
+          rs2_data: wd_bypass_rs2
         };
     end
   end
@@ -1621,3 +1621,5 @@ module RiscvProcessor (
   );
 
 endmodule
+
+
