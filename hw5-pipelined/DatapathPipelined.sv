@@ -56,25 +56,9 @@ module RegFile (
   logic [`REG_SIZE] regs[NumRegs];
 
   // TODO: your code here
-  logic[31:0] rs1_bypass;
-  logic[31:0] rs2_bypass;
-
-  always_comb begin
-    if ((rs1 == rd) && rd != 0) begin
-      rs1_bypass = rd_data;
-    end else begin
-      rs1_bypass = regs[rs1];
-    end
-    if ((rs2 == rd) && rd != 0) begin
-      rs2_bypass = rd_data;
-    end else begin
-      rs2_bypass = regs[rs2];
-    end
-  end
-
   assign regs[0] = 32'd0;
-  assign rs1_data = rs1_bypass;
-  assign rs2_data = rs2_bypass;
+  assign rs1_data = regs[rs1];
+  assign rs2_data = regs[rs2];
 
   generate for (i = 0; i < NumRegs; i++) begin: g_loop
     always_ff @(posedge clk) begin
@@ -142,6 +126,8 @@ typedef struct packed {
   logic [`INSN_SIZE] insn;
   cycle_status_e cycle_status;
   logic [`REG_SIZE] alu_result;
+  // relevant only for stores
+  logic [`REG_SIZE] rs2_data;
 } stage_memory_t;
 
 /** state at the start of Writeback stage */
@@ -176,18 +162,18 @@ module DatapathPipelined (
 );
 
   // opcodes - see section 19 of RiscV spec
-  // localparam bit [`OPCODE_SIZE] OpcodeLoad = 7'b00_000_11;
-  // localparam bit [`OPCODE_SIZE] OpcodeStore = 7'b01_000_11;
+  localparam bit [`OPCODE_SIZE] OpcodeLoad = 7'b00_000_11;
+  localparam bit [`OPCODE_SIZE] OpcodeStore = 7'b01_000_11;
   localparam bit [`OPCODE_SIZE] OpcodeBranch = 7'b11_000_11;
-  // localparam bit [`OPCODE_SIZE] OpcodeJalr = 7'b11_001_11;
-  // localparam bit [`OPCODE_SIZE] OpcodeMiscMem = 7'b00_011_11;
-  // localparam bit [`OPCODE_SIZE] OpcodeJal = 7'b11_011_11;
+  localparam bit [`OPCODE_SIZE] OpcodeJalr = 7'b11_001_11;
+  localparam bit [`OPCODE_SIZE] OpcodeMiscMem = 7'b00_011_11;
+  localparam bit [`OPCODE_SIZE] OpcodeJal = 7'b11_011_11;
 
   localparam bit [`OPCODE_SIZE] OpcodeRegImm = 7'b00_100_11;
   localparam bit [`OPCODE_SIZE] OpcodeRegReg = 7'b01_100_11;
   localparam bit [`OPCODE_SIZE] OpcodeEnviron = 7'b11_100_11;
 
-  // localparam bit [`OPCODE_SIZE] OpcodeAuipc = 7'b00_101_11;
+  localparam bit [`OPCODE_SIZE] OpcodeAuipc = 7'b00_101_11;
   localparam bit [`OPCODE_SIZE] OpcodeLui = 7'b01_101_11;
 
   // cycle counter, not really part of any stage but useful for orienting within GtkWave
@@ -215,7 +201,14 @@ module DatapathPipelined (
       f_pc_current <= 32'd0;
       // NB: use CYCLE_NO_STALL since this is the value that will persist after the last reset cycle
       f_cycle_status <= CYCLE_NO_STALL;
-    end else begin
+    end else if (loadStall) begin
+      f_pc_current <= f_pc_current;
+    end else if (fenceStall) begin
+      f_pc_current <= f_pc_current;
+    end else if (divStall) begin
+      f_pc_current <= f_pc_current;
+    end
+    else begin
       f_cycle_status <= CYCLE_NO_STALL;
       if (branch_bool > 0) begin
         f_pc_current <= branch_taken;
@@ -251,19 +244,36 @@ module DatapathPipelined (
         insn: 0,
         cycle_status: CYCLE_RESET
       };
-    end else begin
-      begin
+    end else if (loadStall) begin
+      decode_state <= '{
+        pc: decode_state.pc,
+        insn: decode_state.insn,
+        cycle_status: decode_state.cycle_status
+      };
+    end else if (fenceStall) begin
+      decode_state <= '{
+        pc: decode_state.pc,
+        insn: decode_state.insn,
+        cycle_status: decode_state.cycle_status
+      };
+    end else if (divStall) begin
+      decode_state <= '{
+        pc: decode_state.pc,
+        insn: decode_state.insn,
+        cycle_status: decode_state.cycle_status
+      };
+    end
+    else begin
         decode_state <= '{
-          pc: f_pc_current,
-          insn: f_insn,
+          pc: branch_bool > 0 ? 0 : f_pc_current,
+          insn: branch_bool > 0 ? 0 : f_insn,
           cycle_status: branch_bool > 0 ? CYCLE_TAKEN_BRANCH : f_cycle_status
         };
-      end
     end
   end
   wire [255:0] d_disasm;
   Disasm #(
-      .PREFIX("D")
+      .PREFIX("C")
   ) disasm_1decode (
       .insn  (decode_state.insn),
       .disasm(d_disasm)
@@ -327,7 +337,144 @@ module DatapathPipelined (
       .rs2_data(regfile_rs2_data)
   );
 
+  // WD bypass
+  logic[31:0] wd_bypass_rs1;
+  logic[31:0] wd_bypass_rs2;
+
+  always_comb begin
+    wd_bypass_rs1 = regfile_rs1_data;
+    wd_bypass_rs2 = regfile_rs2_data;
+
+    if (w_insn_rd != 0 && writeback_state.cycle_status == CYCLE_NO_STALL && regfile_we == 1 && d_insn_rs1 == w_insn_rd) begin
+      wd_bypass_rs1 = writeback_state.alu_result;
+    end
+
+    if (w_insn_rd != 0 && writeback_state.cycle_status == CYCLE_NO_STALL && regfile_we == 1 && d_insn_rs2 == w_insn_rd) begin
+      wd_bypass_rs2 = writeback_state.alu_result;
+    end
+    
+  end
+
   logic illegal_insn;
+
+  logic loadStall;
+
+  // check for load-to-use stall
+  always_comb begin
+    loadStall = 1'b0;
+    if (execute_state.insn[6:0] == OpcodeLoad && execute_state.cycle_status == CYCLE_NO_STALL) begin
+      if (d_insn_rs1 == e_insn_rd || d_insn_rs2 == e_insn_rd) begin
+        loadStall = 1'b1;
+        case (decode_state.insn[6:0])
+          OpcodeLui: begin
+            loadStall = 1'b0;
+          end
+          OpcodeAuipc: begin
+            loadStall = 1'b0;
+          end
+          OpcodeRegImm: begin
+            if (d_insn_rs1 != e_insn_rd) begin
+              loadStall = 1'b0;
+            end
+          end
+          OpcodeRegReg: begin
+          end
+          OpcodeLoad: begin
+            if (d_insn_rs1 != e_insn_rd) begin
+              loadStall = 1'b0;
+            end
+          end
+          OpcodeStore: begin
+            // handle WM bypass (we don't want to stall)
+            if (d_insn_rs2 == e_insn_rd && d_insn_rs1 != e_insn_rd) begin
+              loadStall = 1'b0;
+            end
+          end
+          OpcodeJal: begin
+            loadStall = 1'b0;
+          end
+          OpcodeJalr: begin
+            if (d_insn_rs1 != e_insn_rd) begin
+              loadStall = 1'b0;
+            end
+          end
+          OpcodeBranch: begin
+          end
+          OpcodeEnviron: begin
+            loadStall = 1'b0;
+          end
+          OpcodeMiscMem: begin
+            loadStall = 1'b0;
+          end
+          default: begin
+            loadStall = 1'b0;
+          end
+        endcase
+      end
+    end
+  end
+
+  logic fenceStall;
+
+  always_comb begin
+    fenceStall = 1'b0;
+    if ((execute_state.insn[6:0] == OpcodeStore && execute_state.cycle_status == CYCLE_NO_STALL) || (memory_state.insn[6:0] == OpcodeStore && memory_state.cycle_status == CYCLE_NO_STALL)) begin
+      if (decode_state.insn[6:0] == OpcodeMiscMem && (decode_state.insn[14:12] == 3'b000 || decode_state.insn[14:12] == 3'b001)) begin
+        fenceStall = 1'b1;
+      end
+    end
+  end
+
+  logic divStall;
+  always_comb begin
+    divStall = 1'b0;
+    if (execute_state.insn[6:0] == OpcodeRegReg && execute_state.insn[14:12] >= 4 && execute_state.insn[31:25] == 1 && execute_state.cycle_status == CYCLE_NO_STALL) begin
+      case (decode_state.insn[6:0])
+        OpcodeLui: begin
+        end
+        OpcodeAuipc: begin
+        end
+        OpcodeRegImm: begin
+          if (d_insn_rs1 == e_insn_rd) begin
+            divStall = 1'b1;
+          end
+        end
+        OpcodeRegReg: begin
+          if (d_insn_rs1 == e_insn_rd || d_insn_rs2 == e_insn_rd) begin
+            divStall = 1'b1;
+          end
+        end
+        OpcodeLoad: begin
+          if (d_insn_rs1 == e_insn_rd) begin
+            divStall = 1'b1;
+          end
+        end
+        OpcodeStore: begin
+          if (d_insn_rs1 == e_insn_rd || d_insn_rs2 == e_insn_rd) begin
+            divStall = 1'b1;
+          end
+        end
+        OpcodeJal: begin
+        end
+        OpcodeJalr: begin
+          if (d_insn_rs1 == e_insn_rd) begin
+            divStall = 1'b1;
+          end
+        end
+        OpcodeBranch: begin
+          if (d_insn_rs1 == e_insn_rd || d_insn_rs2 == e_insn_rd) begin
+            divStall = 1'b1;
+          end
+        end
+        OpcodeEnviron: begin
+        end
+        OpcodeMiscMem: begin
+        end
+        default: begin
+        end
+      endcase
+    end
+  end
 
   // setup for register file write
   always_comb begin
@@ -422,21 +569,33 @@ module DatapathPipelined (
             end
             // xor
             3'b100: begin
-
+              if (decode_state.insn[31:25] == 7'd0 || decode_state.insn[31:25] == 7'd1) begin
+              end else begin
+                illegal_insn = 1'b1;
+              end
             end
             // srl & sra
             3'b101: begin
               if (decode_state.insn[31:25] == 7'd0) begin
               end else if (decode_state.insn[31:25] == 7'b0100000) begin
+              end else if (decode_state.insn[31:25] == 7'd1) begin
               end else begin
                 illegal_insn = 1'b1;
               end
             end
             // or
             3'b110: begin
+              if (decode_state.insn[31:25] == 7'd0 || decode_state.insn[31:25] == 7'd1) begin
+              end else begin
+                illegal_insn = 1'b1;
+              end
             end
             // and
             3'b111: begin
+              if (decode_state.insn[31:25] == 7'd0 || decode_state.insn[31:25] == 7'd1) begin
+              end else begin
+                illegal_insn = 1'b1;
+              end
             end
             default: begin
               illegal_insn = 1'b1;
@@ -482,7 +641,65 @@ module DatapathPipelined (
         end
         OpcodeEnviron: begin
           if(decode_state.insn[31:7] == 25'd0) begin
-            // halt = 1'b1;
+          end else begin
+            illegal_insn = 1'b1;
+          end
+        end
+        OpcodeLoad: begin
+          case (decode_state.insn[14:12])
+            // lb
+            3'b000: begin
+            end
+            // lh
+            3'b001: begin
+            end
+            // lw
+            3'b010: begin
+            end
+            // lbu
+            3'b100: begin
+            end
+            // lhu
+            3'b101: begin
+            end
+            default: begin
+              illegal_insn = 1'b1;
+            end
+          endcase
+        end
+        OpcodeStore: begin
+          case (decode_state.insn[14:12])
+            // sb
+            3'b000: begin
+            end
+            // sh
+            3'b001: begin
+            end
+            // sw
+            3'b010: begin
+            end
+            default: begin
+              illegal_insn = 1'b1;
+            end
+          endcase
+        end
+        OpcodeMiscMem: begin
+          case (decode_state.insn[14:12])
+            3'b000: begin
+            end
+            3'b001: begin
+            end
+            default: begin
+              illegal_insn = 1'b1;
+            end
+          endcase
+        end
+        OpcodeAuipc: begin
+        end
+        OpcodeJal: begin
+        end
+        OpcodeJalr: begin
+          if (decode_state.insn[14:12] == 0) begin
           end else begin
             illegal_insn = 1'b1;
           end
@@ -507,16 +724,39 @@ module DatapathPipelined (
         rs1_data: 0,
         rs2_data: 0
       };
-    end else begin
-      begin
+    end else if (loadStall) begin
+      execute_state <= '{
+        pc: 0,
+        insn: 0,
+        cycle_status: CYCLE_LOAD2USE,
+        rs1_data: 0,
+        rs2_data: 0
+      };
+    end else if (fenceStall) begin
+      execute_state <= '{
+        pc: 0,
+        insn: 0,
+        cycle_status: CYCLE_FENCEI,
+        rs1_data: 0,
+        rs2_data: 0
+      };
+    end else if (divStall) begin
+      execute_state <= '{
+        pc: 0,
+        insn: 0,
+        cycle_status: CYCLE_DIV2USE,
+        rs1_data: 0,
+        rs2_data: 0
+      };
+    end
+    else begin
         execute_state <= '{
-          pc: decode_state.pc,
-          insn: decode_state.insn,
+          pc: branch_bool > 0 ? 0 : decode_state.pc,
+          insn: branch_bool > 0 ? 0 : decode_state.insn,
           cycle_status: illegal_insn ? CYCLE_INVALID : branch_bool > 0 ? CYCLE_TAKEN_BRANCH : decode_state.cycle_status,
-          rs1_data: regfile_rs1_data,
-          rs2_data: regfile_rs2_data
+          rs1_data: wd_bypass_rs1,
+          rs2_data: wd_bypass_rs2
         };
-      end
     end
   end
   wire [255:0] e_disasm;
@@ -567,6 +807,9 @@ module DatapathPipelined (
   logic[31:0] e_bypass_rs1; 
   logic[31:0] e_bypass_rs2; 
 
+  logic[31:0] e_unsigned_bypass_rs1;
+  logic[31:0] e_unsigned_bypass_rs2;
+
   // multiply
   logic[63:0] product;
 
@@ -578,29 +821,51 @@ module DatapathPipelined (
   always_comb begin
     e_bypass_rs1 = 0;
     e_bypass_rs2 = 0;
+    e_unsigned_bypass_rs1 = 0;
+    e_unsigned_bypass_rs2 = 0;
     if (execute_state.cycle_status == CYCLE_NO_STALL) begin
-      if ((e_insn_rs1 == m_insn_rd) && m_insn_rd != 0 && memory_state.cycle_status == CYCLE_NO_STALL && memory_state.insn[6:0] != OpcodeBranch) begin
+      if ((e_insn_rs1 == m_insn_rd) && m_insn_rd != 0 && memory_state.cycle_status == CYCLE_NO_STALL && memory_state.insn[6:0] != OpcodeBranch && memory_state.insn[6:0] != OpcodeStore && memory_state.insn[6:0] != OpcodeLoad && memory_state.insn[6:0] != OpcodeEnviron && memory_state.insn[6:0] != OpcodeMiscMem
+      && execute_state.insn[6:0] != OpcodeLui && execute_state.insn[6:0] != OpcodeAuipc && execute_state.insn[6:0] != OpcodeJal && execute_state.insn[6:0] != OpcodeEnviron && execute_state.insn[6:0] != OpcodeMiscMem) begin
         e_bypass_rs1 = memory_state.alu_result;
+        e_unsigned_bypass_rs1 = e_bypass_rs1[31] ? ~e_bypass_rs1 + 1: e_bypass_rs1;
       end else begin
         // WX bypass logic
-        if ((e_insn_rs1 == w_insn_rd) && w_insn_rd != 0 && writeback_state.cycle_status == CYCLE_NO_STALL && writeback_state.insn[6:0] != OpcodeBranch) begin
+        if ((e_insn_rs1 == w_insn_rd) && w_insn_rd != 0 && writeback_state.cycle_status == CYCLE_NO_STALL && writeback_state.insn[6:0] != OpcodeBranch && writeback_state.insn[6:0] != OpcodeStore && writeback_state.insn[6:0] != OpcodeEnviron && writeback_state.insn[6:0] != OpcodeMiscMem
+        && execute_state.insn[6:0] != OpcodeLui && execute_state.insn[6:0] != OpcodeAuipc && execute_state.insn[6:0] != OpcodeJal && execute_state.insn[6:0] != OpcodeEnviron && execute_state.insn[6:0] != OpcodeMiscMem) begin
           e_bypass_rs1 = writeback_state.alu_result;
+          e_unsigned_bypass_rs1 = e_bypass_rs1[31] ? ~e_bypass_rs1 + 1: e_bypass_rs1;
         end else begin
           e_bypass_rs1 = execute_state.rs1_data;
+          e_unsigned_bypass_rs1 = e_bypass_rs1[31] ? ~e_bypass_rs1 + 1: e_bypass_rs1;
         end
       end 
-      if ((e_insn_rs2 == m_insn_rd) && m_insn_rd != 0 && memory_state.cycle_status == CYCLE_NO_STALL && memory_state.insn[6:0] != OpcodeBranch) begin
+
+      if ((e_insn_rs2 == m_insn_rd) && m_insn_rd != 0 && memory_state.cycle_status == CYCLE_NO_STALL && memory_state.insn[6:0] != OpcodeBranch && memory_state.insn[6:0] != OpcodeLoad && memory_state.insn[6:0] != OpcodeStore && memory_state.insn[6:0] != OpcodeEnviron && memory_state.insn[6:0] != OpcodeMiscMem
+      && (execute_state.insn[6:0] == OpcodeRegReg || execute_state.insn[6:0] == OpcodeBranch || execute_state.insn[6:0] == OpcodeStore)) begin
         e_bypass_rs2 = memory_state.alu_result;
+        e_unsigned_bypass_rs2 = e_bypass_rs2[31] ? ~e_bypass_rs2 + 1: e_bypass_rs2;
       end else begin
         // WX bypass logic
-        if ((e_insn_rs2 == w_insn_rd) && w_insn_rd != 0 && writeback_state.cycle_status == CYCLE_NO_STALL && writeback_state.insn[6:0] != OpcodeBranch) begin
+        if ((e_insn_rs2 == w_insn_rd) && w_insn_rd != 0 && writeback_state.cycle_status == CYCLE_NO_STALL && writeback_state.insn[6:0] != OpcodeBranch && writeback_state.insn[6:0] != OpcodeStore && writeback_state.insn[6:0] != OpcodeEnviron && writeback_state.insn[6:0] != OpcodeMiscMem
+        && (execute_state.insn[6:0] == OpcodeRegReg || execute_state.insn[6:0] == OpcodeBranch || execute_state.insn[6:0] == OpcodeStore)) begin
           e_bypass_rs2 = writeback_state.alu_result;
+          e_unsigned_bypass_rs2 = e_bypass_rs2[31] ? ~e_bypass_rs2 + 1: e_bypass_rs2;
         end else begin
           e_bypass_rs2 = execute_state.rs2_data;
+          e_unsigned_bypass_rs2 = e_bypass_rs2[31] ? ~e_bypass_rs2 + 1: e_bypass_rs2;
         end
       end
     end
   end
+
+  logic[31:0] remainder1, remainder2, remainder3, remainder4;
+  logic[31:0] quotient1, quotient2, quotient3, quotient4;
+
+  // divider / remainder
+  divider_unsigned_pipelined div(.clk(clk), .rst(rst), .i_dividend(e_unsigned_bypass_rs1), .i_divisor(e_unsigned_bypass_rs2), .o_quotient(quotient1), .o_remainder(remainder1));
+  divider_unsigned_pipelined divu(.clk(clk), .rst(rst), .i_dividend(e_bypass_rs1), .i_divisor(e_bypass_rs2), .o_quotient(quotient2), .o_remainder(remainder2));
+  divider_unsigned_pipelined rem(.clk(clk), .rst(rst), .i_dividend(e_unsigned_bypass_rs1), .i_divisor(e_unsigned_bypass_rs2), .o_quotient(quotient3), .o_remainder(remainder3));
+  divider_unsigned_pipelined remu(.clk(clk), .rst(rst), .i_dividend(e_bypass_rs1), .i_divisor(e_bypass_rs2), .o_quotient(quotient4), .o_remainder(remainder4));
 
   always_comb begin
     branch_bool = 0;
@@ -706,9 +971,15 @@ module DatapathPipelined (
                 e_result = product[63:32];
               end
             end
-            // xor
+            // xor & div
             3'b100: begin
-              e_result = e_bypass_rs1 ^ e_bypass_rs2;
+              // xor
+              if (execute_state.insn[31:25] == 7'd0) begin
+                e_result = e_bypass_rs1 ^ e_bypass_rs2;
+              // div
+              end else if (execute_state.insn[31:25] == 7'd1) begin
+                e_result = e_bypass_rs1;
+              end
             end
             // srl & sra
             3'b101: begin
@@ -716,15 +987,31 @@ module DatapathPipelined (
                 e_result = e_bypass_rs1 >> e_bypass_rs2[4:0];
               end else if (execute_state.insn[31:25] == 7'b0100000) begin
                 e_result = $signed(e_bypass_rs1) >>> e_bypass_rs2[4:0];
+              end else if (execute_state.insn[31:25] == 7'd1) begin
+                e_result = e_bypass_rs1;
               end
             end
-            // or
+            // or & rem
             3'b110: begin
-              e_result = e_bypass_rs1 | e_bypass_rs2;
+              // or
+              if (execute_state.insn[31:25] == 7'd0) begin
+                e_result = e_bypass_rs1 | e_bypass_rs2;
+              end
+              // rem
+              else if (execute_state.insn[31:25] == 7'd1) begin
+                e_result = e_bypass_rs1;
+              end
             end
-            // and
+            // and & remu
             3'b111: begin
-              e_result = e_bypass_rs1 & e_bypass_rs2;
+              // and
+              if (execute_state.insn[31:25] == 7'd0) begin
+                e_result = e_bypass_rs1 & e_bypass_rs2;
+              end
+              // remu
+              else if (execute_state.insn[31:25] == 7'd1) begin
+                e_result = e_bypass_rs1;
+              end
             end
             default: begin
             end
@@ -778,6 +1065,27 @@ module DatapathPipelined (
             end
           endcase
         end
+        OpcodeLoad: begin
+          e_result = e_bypass_rs1 + e_imm_i_sext;
+        end
+        OpcodeStore: begin
+          e_result = e_bypass_rs1 + e_imm_s_sext;
+        end
+        OpcodeMiscMem: begin
+        end
+        OpcodeAuipc: begin
+          e_result = execute_state.pc + {execute_state.insn[31:12], 12'b0};
+        end
+        OpcodeJal: begin
+          e_result = execute_state.pc + 4;
+          branch_bool = 1;
+          branch_taken = execute_state.pc + e_imm_j_sext;
+        end
+        OpcodeJalr: begin
+          e_result = execute_state.pc + 4;
+          branch_bool = 1;
+          branch_taken = (e_bypass_rs1 + e_imm_i_sext) & ~(32'd1);
+        end
         default: begin
         end
       endcase
@@ -794,7 +1102,8 @@ module DatapathPipelined (
         pc: 0,
         insn: 0,
         cycle_status: CYCLE_RESET,
-        alu_result: 0
+        alu_result: 0,
+        rs2_data: 0
       };
     end else begin
       begin
@@ -802,7 +1111,9 @@ module DatapathPipelined (
           pc: execute_state.pc,
           insn: execute_state.insn,
           cycle_status:  execute_state.cycle_status,
-          alu_result: e_result
+          alu_result: e_result,
+          // relevant for stores -> WM bypass
+          rs2_data: e_bypass_rs2
         };
       end
     end
@@ -849,6 +1160,226 @@ module DatapathPipelined (
   wire [`REG_SIZE] m_imm_b_sext = {{19{m_imm_b[12]}}, m_imm_b[12:0]};
   wire [`REG_SIZE] m_imm_j_sext = {{11{m_imm_j[20]}}, m_imm_j[20:0]};
 
+  // what we send to the writeback stage 
+  logic [31:0] memoryResult;
+
+  // memory we sent to dmem
+  logic[31:0] tempAddr;
+  assign addr_to_dmem = tempAddr;
+
+  // write enable for dmem
+  logic[3:0] tempWe;
+  assign store_we_to_dmem = tempWe;
+
+  // value we store in dmem
+  logic[31:0] tempStore;
+  assign store_data_to_dmem = tempStore;
+
+  // bypass value
+  logic[31:0] rs2_bypass;
+  always_comb begin
+    rs2_bypass = memory_state.rs2_data;
+    if (writeback_state.cycle_status == CYCLE_NO_STALL && writeback_state.insn[6:0] == OpcodeLoad && memory_state.insn[6:0] == OpcodeStore &&
+    w_insn_rd == m_insn_rs2) begin
+      rs2_bypass = writeback_state.alu_result;
+    end
+  end
+
+  always_comb begin
+    memoryResult = memory_state.alu_result;
+    tempAddr = 32'b0;
+    tempWe = 4'b0000;
+    if (memory_state.cycle_status == CYCLE_NO_STALL) begin
+      case (memory_state.insn[6:0]) 
+        OpcodeLui: begin
+        end
+        OpcodeRegImm: begin
+        end
+        OpcodeRegReg: begin
+          case (memory_state.insn[14:12])
+            3'b100:
+              if (memory_state.insn[31:25] == 7'd1) begin
+                if (memory_state.rs2_data == 0) begin
+                  memoryResult = ~(32'd0);
+                end else begin
+                  if (memory_state.alu_result[31] != memory_state.rs2_data[31]) begin
+                    memoryResult = ~(quotient1) + 1;
+                  end else begin
+                    if (memory_state.alu_result == 32'b10000000000000000000000000000000) begin
+                      if (memory_state.rs2_data == ~(32'd0)) begin
+                        memoryResult = memory_state.alu_result;
+                      end else begin
+                        memoryResult = quotient1;
+                      end
+                    end else begin
+                      memoryResult = quotient1;
+                    end
+                  end
+                end
+              end
+            3'b101:
+              if (memory_state.insn[31:25] == 7'd1) begin
+                if (memory_state.rs2_data == 0) begin
+                  memoryResult = ~(32'd0);
+                end else begin
+                  memoryResult = quotient2;
+                end
+              end
+            3'b110:
+              if (memory_state.insn[31:25] == 7'd1) begin
+                if (memory_state.rs2_data == 0) begin
+                  memoryResult = memory_state.alu_result;
+                end else begin
+                  if (memory_state.alu_result[31] == 0 & memory_state.rs2_data[31] == 0) begin
+                    memoryResult = remainder3;
+                  end else if (memory_state.alu_result[31] == 1 & memory_state.rs2_data[31] == 0) begin
+                    memoryResult = ~(remainder3) + 1;
+                  end else if (memory_state.alu_result[31] == 0 & memory_state.rs2_data[31] == 1) begin
+                    memoryResult = remainder3;
+                  end else begin
+                    if (memory_state.alu_result == 32'b10000000000000000000000000000000) begin
+                      if (memory_state.rs2_data == ~(32'd0)) begin
+                        memoryResult = 0;
+                      end else begin
+                        memoryResult = ~(remainder3) + 1;
+                      end
+                    end else begin
+                      memoryResult = ~(remainder3) + 1;
+                    end
+                  end
+                end
+              end
+            3'b111:
+              if (memory_state.insn[31:25] == 7'd1) begin
+                if (memory_state.rs2_data == 0) begin
+                  memoryResult = memory_state.alu_result;
+                end else begin
+                  memoryResult = remainder4;
+                end
+              end
+              default: begin
+              end
+          endcase
+        end
+        OpcodeBranch: begin
+        end
+        OpcodeLoad: begin
+          case (memory_state.insn[14:12]) 
+            // lb
+            3'b000: begin
+              tempAddr = (memory_state.alu_result & ~32'd3);
+              if (memory_state.alu_result[1:0] == 2'b00) begin
+                memoryResult = ({{24{load_data_from_dmem[7]}}, load_data_from_dmem[7:0]});
+              end else if (memory_state.alu_result[1:0] == 2'b01) begin
+                memoryResult = ({{24{load_data_from_dmem[15]}}, load_data_from_dmem[15:8]});
+              end else if (memory_state.alu_result[1:0] == 2'b10) begin
+                memoryResult = ({{24{load_data_from_dmem[23]}}, load_data_from_dmem[23:16]});
+              end else begin
+                memoryResult = ({{24{load_data_from_dmem[31]}}, load_data_from_dmem[31:24]});
+              end
+            end
+            // lh
+            3'b001: begin
+              if (memory_state.alu_result[0] == 1'b0) begin
+                tempAddr = (memory_state.alu_result & ~32'd3);
+                if (memory_state.alu_result[1] == 1'b0) begin
+                  memoryResult = {{16{load_data_from_dmem[15]}}, load_data_from_dmem[15:0]};
+                end else begin
+                  memoryResult = {{16{load_data_from_dmem[31]}}, load_data_from_dmem[31:16]};
+                end
+              end
+            end
+            // lw
+            3'b010: begin
+              if (memory_state.alu_result[1:0] == 2'b00) begin
+                tempAddr = memory_state.alu_result;
+                memoryResult = load_data_from_dmem;
+              end
+            end
+            // lbu
+            3'b100: begin
+              tempAddr = (memory_state.alu_result & ~32'd3);
+              if (memory_state.alu_result[1:0] == 2'b00) begin
+                  memoryResult = ({{24{1'b0}}, load_data_from_dmem[7:0]});
+              end else if (memory_state.alu_result[1:0] == 2'b01) begin
+                memoryResult = ({{24{1'b0}}, load_data_from_dmem[15:8]});
+              end else if (memory_state.alu_result[1:0] == 2'b10) begin
+                memoryResult = ({{24{1'b0}}, load_data_from_dmem[23:16]});
+              end else begin
+                memoryResult = ({{24{1'b0}}, load_data_from_dmem[31:24]});
+              end
+            end
+            // lhu
+            3'b101: begin
+              if (memory_state.alu_result[0] == 1'b0) begin
+                tempAddr = (memory_state.alu_result & ~32'd3);
+                if (memory_state.alu_result[1] == 1'b0) begin
+                  memoryResult = {{16{1'b0}}, load_data_from_dmem[15:0]};
+                end else begin
+                  memoryResult = {{16{1'b0}}, load_data_from_dmem[31:16]};
+                end
+              end
+            end
+            default: begin
+            end
+          endcase
+        end
+        OpcodeStore: begin
+          case (memory_state.insn[14:12]) 
+            // sb
+            3'b000: begin
+              tempAddr = (memory_state.alu_result & ~32'd3);
+              if (memory_state.alu_result[1:0] == 2'b00) begin
+                tempWe = 4'b0001;
+                tempStore = {load_data_from_dmem[31:8], rs2_bypass[7:0]};
+              end else if (memory_state.alu_result[1:0] == 2'b01) begin
+                tempWe = 4'b0010;
+                tempStore = {load_data_from_dmem[31:16], rs2_bypass[7:0], load_data_from_dmem[7:0]};
+              end else if (memory_state.alu_result[1:0] == 2'b10) begin
+                tempWe = 4'b0100;
+                tempStore = {load_data_from_dmem[31:24], rs2_bypass[7:0], load_data_from_dmem[15:0]};
+              end else begin
+                tempWe = 4'b1000;
+                tempStore = {rs2_bypass[7:0], load_data_from_dmem[23:0]};
+              end
+            end
+            3'b001: begin
+              if (memory_state.alu_result[0] == 1'b0) begin
+                tempAddr = (memory_state.alu_result & ~32'd3);
+                if (memory_state.alu_result[1] == 1'b0) begin
+                  tempWe = 4'b0011;
+                  tempStore = {16'b0, rs2_bypass[15:0]};
+                end else begin
+                  tempWe = 4'b1100;
+                  tempStore = {rs2_bypass[15:0], 16'b0};
+                end
+              end
+            end
+            3'b010: begin
+              if (memory_state.alu_result[1:0] == 2'b00) begin
+                tempAddr = memory_state.alu_result;
+                tempWe = 4'b1111;
+                tempStore = rs2_bypass;
+              end
+            end
+            default: begin
+            end
+          endcase
+        end
+        OpcodeMiscMem: begin
+        end
+        OpcodeAuipc: begin
+        end
+        OpcodeJal: begin
+        end
+        OpcodeJalr: begin
+        end
+        default: begin
+        end
+      endcase
+    end
+  end
+
 
   /*******************/
   /* WRITEBACK STAGE */
@@ -865,10 +1396,10 @@ module DatapathPipelined (
     end else begin
       begin
         writeback_state <= '{
-          pc: memory_state.cycle_status == CYCLE_TAKEN_BRANCH ? 0 : memory_state.pc,
-          insn: memory_state.cycle_status == CYCLE_TAKEN_BRANCH ? 0 : memory_state.insn,
+          pc: memory_state.cycle_status == (CYCLE_TAKEN_BRANCH | CYCLE_DIV2USE | CYCLE_FENCEI | CYCLE_INVALID | CYCLE_LOAD2USE) ? 0 : memory_state.pc,
+          insn: memory_state.cycle_status == (CYCLE_TAKEN_BRANCH | CYCLE_DIV2USE | CYCLE_FENCEI | CYCLE_INVALID | CYCLE_LOAD2USE) ? 0 : memory_state.insn,
           cycle_status:  memory_state.cycle_status,
-          alu_result: memory_state.alu_result
+          alu_result: memoryResult
         };
       end
     end
@@ -937,6 +1468,28 @@ module DatapathPipelined (
           if(writeback_state.insn[31:7] == 25'd0) begin
             halt = 1'b1;
           end
+        end
+        OpcodeLoad: begin
+          regfile_rd_data = writeback_state.alu_result;
+          regfile_we = 1;
+        end
+        OpcodeStore: begin
+        end
+        OpcodeMiscMem: begin
+        end
+        OpcodeAuipc: begin
+          regfile_rd_data = writeback_state.alu_result;
+          regfile_we = 1;
+        end
+        OpcodeJal: begin
+          regfile_rd_data = writeback_state.alu_result;
+          regfile_we = 1;
+        end
+        OpcodeJalr: begin
+          regfile_rd_data = writeback_state.alu_result;
+          regfile_we = 1;
+        end
+        OpcodeBranch: begin
         end
         default: begin
         end
@@ -1068,3 +1621,5 @@ module RiscvProcessor (
   );
 
 endmodule
+
+
