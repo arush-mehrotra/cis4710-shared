@@ -450,7 +450,7 @@ module DatapathPipelined (
           end
         end
         OpcodeStore: begin
-          if (d_insn_rs1 == e_insn_rd) begin
+          if (d_insn_rs1 == e_insn_rd || d_insn_rs2 == e_insn_rd) begin
             divStall = 1'b1;
           end
         end
