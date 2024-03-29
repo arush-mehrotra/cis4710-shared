@@ -283,15 +283,15 @@ module DatapathPipelined (
     end
     else begin
         decode_state <= '{
-          pc: f_pc_current,
-          insn: f_insn,
+          pc: branch_bool > 0 ? 0 : f_pc_current,
+          insn: branch_bool > 0 ? 0 : f_insn,
           cycle_status: branch_bool > 0 ? CYCLE_TAKEN_BRANCH : f_cycle_status
         };
     end
   end
   wire [255:0] d_disasm;
   Disasm #(
-      .PREFIX("D")
+      .PREFIX("C")
   ) disasm_1decode (
       .insn  (decode_state.insn),
       .disasm(d_disasm)
@@ -751,8 +751,8 @@ module DatapathPipelined (
     end
     else begin
         execute_state <= '{
-          pc: decode_state.pc,
-          insn: decode_state.insn,
+          pc: branch_bool > 0 ? 0 : decode_state.pc,
+          insn: branch_bool > 0 ? 0 : decode_state.insn,
           cycle_status: illegal_insn ? CYCLE_INVALID : branch_bool > 0 ? CYCLE_TAKEN_BRANCH : decode_state.cycle_status,
           rs1_data: regfile_rs1_data,
           rs2_data: regfile_rs2_data
@@ -830,7 +830,7 @@ module DatapathPipelined (
         e_unsigned_bypass_rs1 = e_bypass_rs1[31] ? ~e_bypass_rs1 + 1: e_bypass_rs1;
       end else begin
         // WX bypass logic
-        if ((e_insn_rs1 == w_insn_rd) && w_insn_rd != 0 && writeback_state.cycle_status == CYCLE_NO_STALL && writeback_state.insn[6:0] != OpcodeBranch && writeback_state.insn[6:0] != OpcodeStore && writeback_state.insn[6:0] != OpcodeEnviron && writeback_state.insn[6:0] != OpcodeMiscMem
+        if ((e_insn_rs1 == w_insn_rd) && w_insn_rd != 0 && writeback_state.cycle_status == CYCLE_NO_STALL && writeback_state.insn[6:0] != OpcodeBranch && memory_state.insn[6:0] != OpcodeLoad && writeback_state.insn[6:0] != OpcodeStore && writeback_state.insn[6:0] != OpcodeEnviron && writeback_state.insn[6:0] != OpcodeMiscMem
         && execute_state.insn[6:0] != OpcodeLui && execute_state.insn[6:0] != OpcodeAuipc && execute_state.insn[6:0] != OpcodeJal && execute_state.insn[6:0] != OpcodeEnviron && execute_state.insn[6:0] != OpcodeMiscMem) begin
           e_bypass_rs1 = writeback_state.alu_result;
           e_unsigned_bypass_rs1 = e_bypass_rs1[31] ? ~e_bypass_rs1 + 1: e_bypass_rs1;
@@ -840,7 +840,7 @@ module DatapathPipelined (
         end
       end 
 
-      if ((e_insn_rs2 == m_insn_rd) && m_insn_rd != 0 && memory_state.cycle_status == CYCLE_NO_STALL && memory_state.insn[6:0] != OpcodeBranch && memory_state.insn[6:0] != OpcodeStore && memory_state.insn[6:0] != OpcodeEnviron && memory_state.insn[6:0] != OpcodeMiscMem
+      if ((e_insn_rs2 == m_insn_rd) && m_insn_rd != 0 && memory_state.cycle_status == CYCLE_NO_STALL && memory_state.insn[6:0] != OpcodeBranch && memory_state.insn[6:0] != OpcodeLoad && memory_state.insn[6:0] != OpcodeStore && memory_state.insn[6:0] != OpcodeEnviron && memory_state.insn[6:0] != OpcodeMiscMem
       && (execute_state.insn[6:0] == OpcodeRegReg || execute_state.insn[6:0] == OpcodeBranch || execute_state.insn[6:0] == OpcodeStore)) begin
         e_bypass_rs2 = memory_state.alu_result;
         e_unsigned_bypass_rs2 = e_bypass_rs2[31] ? ~e_bypass_rs2 + 1: e_bypass_rs2;
@@ -1179,7 +1179,7 @@ module DatapathPipelined (
   logic[31:0] rs2_bypass;
   always_comb begin
     rs2_bypass = memory_state.rs2_data;
-    if (writeback_state.cycle_status == CYCLE_NO_STALL && writeback_state.insn[6:0] == OpcodeLoad &&
+    if (writeback_state.cycle_status == CYCLE_NO_STALL && writeback_state.insn[6:0] == OpcodeLoad && memory_state.insn[6:0] == OpcodeStore &&
     w_insn_rd == m_insn_rs2) begin
       rs2_bypass = writeback_state.alu_result;
     end
