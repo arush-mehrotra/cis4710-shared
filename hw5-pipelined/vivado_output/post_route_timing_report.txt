@@ -1,0 +1,274 @@
+Copyright 1986-2020 Xilinx, Inc. All Rights Reserved.
+------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2020.2 (lin64) Build 3064766 Wed Nov 18 09:12:47 MST 2020
+| Date         : Fri Mar 29 17:35:26 2024
+| Host         : big02.seas.upenn.edu running 64-bit openSUSE Leap 15.5
+| Command      : report_timing -file ./vivado_output/post_route_timing_report.txt
+| Design       : RiscvSystem
+| Device       : 7z020-clg484
+| Speed File   : -1  PRODUCTION 1.12 2019-11-22
+------------------------------------------------------------------------------------
+
+Timing Report
+
+Slack (VIOLATED) :        -17.944ns  (required time - arrival time)
+  Source:                 datapath/writeback_state_reg[alu_result][18]/C
+                            (rising edge-triggered cell FDRE clocked by clk_proc_clk_wiz_0  {rise@0.000ns fall@20.000ns period=40.000ns})
+  Destination:            datapath/div/intermediate_remainder_reg[21]/D
+                            (rising edge-triggered cell FDCE clocked by clk_proc_clk_wiz_0  {rise@0.000ns fall@20.000ns period=40.000ns})
+  Path Group:             clk_proc_clk_wiz_0
+  Path Type:              Setup (Max at Slow Process Corner)
+  Requirement:            40.000ns  (clk_proc_clk_wiz_0 rise@40.000ns - clk_proc_clk_wiz_0 rise@0.000ns)
+  Data Path Delay:        57.734ns  (logic 16.588ns (28.732%)  route 41.146ns (71.268%))
+  Logic Levels:           77  (CARRY4=42 LUT1=1 LUT2=1 LUT3=3 LUT4=6 LUT5=11 LUT6=13)
+  Clock Path Skew:        -0.150ns (DCD - SCD + CPR)
+    Destination Clock Delay (DCD):    -1.594ns = ( 38.406 - 40.000 ) 
+    Source Clock Delay      (SCD):    -0.868ns
+    Clock Pessimism Removal (CPR):    0.577ns
+  Clock Uncertainty:      0.091ns  ((TSJ^2 + DJ^2)^1/2) / 2 + PE
+    Total System Jitter     (TSJ):    0.071ns
+    Discrete Jitter          (DJ):    0.168ns
+    Phase Error              (PE):    0.000ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk_proc_clk_wiz_0 rise edge)
+                                                      0.000     0.000 r  
+    Y9                                                0.000     0.000 r  CLOCK_100MHz (IN)
+                         net (fo=0)                   0.000     0.000    mmcm/CLOCK_100MHz
+    Y9                   IBUF (Prop_ibuf_I_O)         1.490     1.490 r  mmcm/clkin1_ibufg/O
+                         net (fo=1, routed)           1.285     2.775    mmcm/clk_in1_clk_wiz_0
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                     -7.343    -4.568 r  mmcm/mmcm_adv_inst/CLKOUT0
+                         net (fo=2, routed)           1.855    -2.713    mmcm/clk_proc_clk_wiz_0
+    BUFGCTRL_X0Y0        BUFGCTRL (Prop_bufgctrl_I0_O)
+                                                      0.101    -2.612 r  mmcm/clkout1_buf/O
+                         net (fo=1978, routed)        1.744    -0.868    datapath/clock_processor
+    SLICE_X31Y45         FDRE                                         r  datapath/writeback_state_reg[alu_result][18]/C
+  -------------------------------------------------------------------    -------------------
+    SLICE_X31Y45         FDRE (Prop_fdre_C_Q)         0.456    -0.412 f  datapath/writeback_state_reg[alu_result][18]/Q
+                         net (fo=38, routed)          1.663     1.251    datapath/writeback_state_reg[alu_result][18]
+    SLICE_X45Y14         LUT1 (Prop_lut1_I0_O)        0.124     1.375 r  datapath/intermediate_divisor[20]_i_17/O
+                         net (fo=1, routed)           0.000     1.375    datapath/intermediate_divisor[20]_i_17_n_0
+    SLICE_X45Y14         CARRY4 (Prop_carry4_S[1]_CO[3])
+                                                      0.550     1.925 r  datapath/intermediate_divisor_reg[20]_i_10/CO[3]
+                         net (fo=1, routed)           0.000     1.925    datapath/intermediate_divisor_reg[20]_i_10_n_0
+    SLICE_X45Y15         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.114     2.039 r  datapath/intermediate_divisor_reg[24]_i_10/CO[3]
+                         net (fo=1, routed)           0.000     2.039    datapath/intermediate_divisor_reg[24]_i_10_n_0
+    SLICE_X45Y16         CARRY4 (Prop_carry4_CI_O[2])
+                                                      0.239     2.278 f  datapath/intermediate_divisor_reg[31]_i_18/O[2]
+                         net (fo=1, routed)           1.002     3.280    datapath/div/intermediate_divisor[28]_i_2_0[2]
+    SLICE_X47Y12         LUT3 (Prop_lut3_I0_O)        0.302     3.582 f  datapath/div/intermediate_divisor[27]_i_3/O
+                         net (fo=2, routed)           0.736     4.318    datapath/div/intermediate_divisor[27]_i_3_n_0
+    SLICE_X52Y12         LUT5 (Prop_lut5_I0_O)        0.124     4.442 f  datapath/div/intermediate_divisor[27]_i_2/O
+                         net (fo=1, routed)           0.667     5.109    datapath/div/intermediate_divisor[27]_i_2_n_0
+    SLICE_X52Y12         LUT6 (Prop_lut6_I0_O)        0.124     5.233 f  datapath/div/intermediate_divisor[27]_i_1__0/O
+                         net (fo=49, routed)          0.746     5.979    datapath/div/e_unsigned_bypass_rs2[27]
+    SLICE_X51Y14         LUT2 (Prop_lut2_I1_O)        0.124     6.103 r  datapath/div/i___903/O
+                         net (fo=1, routed)           0.000     6.103    datapath/div/i___903_n_0
+    SLICE_X51Y14         CARRY4 (Prop_carry4_S[1]_CO[3])
+                                                      0.550     6.653 r  datapath/div/i___0_i_1/CO[3]
+                         net (fo=208, routed)         0.920     7.573    datapath/div/i___0_i_1_n_0
+    SLICE_X48Y13         LUT6 (Prop_lut6_I4_O)        0.124     7.697 r  datapath/div/i___1_i_36/O
+                         net (fo=1, routed)           0.668     8.366    datapath/div/i___1_i_36_n_0
+    SLICE_X44Y15         CARRY4 (Prop_carry4_DI[0]_CO[3])
+                                                      0.526     8.892 r  datapath/div/i___1_i_24/CO[3]
+                         net (fo=1, routed)           0.000     8.892    datapath/div/i___1_i_24_n_0
+    SLICE_X44Y16         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.114     9.006 r  datapath/div/i___1_i_15/CO[3]
+                         net (fo=1, routed)           0.000     9.006    datapath/div/i___1_i_15_n_0
+    SLICE_X44Y17         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.114     9.120 r  datapath/div/i___1_i_3/CO[3]
+                         net (fo=1, routed)           0.000     9.120    datapath/div/i___1_i_3_n_0
+    SLICE_X44Y18         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.114     9.234 r  datapath/div/i___1_i_1/CO[3]
+                         net (fo=124, routed)         1.514    10.747    datapath/div/i___1_i_1_n_0
+    SLICE_X45Y21         LUT4 (Prop_lut4_I3_O)        0.124    10.871 r  datapath/div/i___2_i_28/O
+                         net (fo=2, routed)           0.824    11.695    datapath/div/temp_remainder[2]_35[26]
+    SLICE_X46Y17         LUT4 (Prop_lut4_I3_O)        0.124    11.819 r  datapath/div/i___2_i_11/O
+                         net (fo=1, routed)           0.000    11.819    datapath/div/i___2_i_11_n_0
+    SLICE_X46Y17         CARRY4 (Prop_carry4_S[1]_CO[3])
+                                                      0.533    12.352 r  datapath/div/i___2_i_1/CO[3]
+                         net (fo=48, routed)          1.385    13.737    datapath/div/i___2_i_1_n_0
+    SLICE_X47Y21         LUT6 (Prop_lut6_I5_O)        0.124    13.861 r  datapath/div/i___280_i_1/O
+                         net (fo=9, routed)           1.021    14.882    datapath/div/temp_remainder[3]_37[21]
+    SLICE_X52Y18         LUT4 (Prop_lut4_I1_O)        0.124    15.006 r  datapath/div/i___3_i_19/O
+                         net (fo=1, routed)           0.000    15.006    datapath/div/i___3_i_19_n_0
+    SLICE_X52Y18         CARRY4 (Prop_carry4_S[3]_CO[3])
+                                                      0.401    15.407 r  datapath/div/i___3_i_3/CO[3]
+                         net (fo=1, routed)           0.000    15.407    datapath/div/i___3_i_3_n_0
+    SLICE_X52Y19         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.114    15.521 r  datapath/div/i___3_i_1/CO[3]
+                         net (fo=179, routed)         1.043    16.564    datapath/div/i___3_i_1_n_0
+    SLICE_X53Y22         LUT3 (Prop_lut3_I2_O)        0.124    16.688 f  datapath/div/i___4_i_54/O
+                         net (fo=2, routed)           0.602    17.290    datapath/div/temp_remainder[4]_39[6]
+    SLICE_X55Y19         LUT6 (Prop_lut6_I4_O)        0.124    17.414 r  datapath/div/i___4_i_42/O
+                         net (fo=1, routed)           0.693    18.108    datapath/div/i___4_i_42_n_0
+    SLICE_X54Y17         CARRY4 (Prop_carry4_DI[3]_CO[3])
+                                                      0.396    18.504 r  datapath/div/i___4_i_29/CO[3]
+                         net (fo=1, routed)           0.000    18.504    datapath/div/i___4_i_29_n_0
+    SLICE_X54Y18         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    18.621 r  datapath/div/i___4_i_16/CO[3]
+                         net (fo=1, routed)           0.000    18.621    datapath/div/i___4_i_16_n_0
+    SLICE_X54Y19         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    18.738 r  datapath/div/i___4_i_4/CO[3]
+                         net (fo=1, routed)           0.000    18.738    datapath/div/i___4_i_4_n_0
+    SLICE_X54Y20         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    18.855 r  datapath/div/i___4_i_1/CO[3]
+                         net (fo=93, routed)          1.366    20.220    datapath/div/i___4_i_1_n_0
+    SLICE_X57Y12         LUT5 (Prop_lut5_I4_O)        0.124    20.344 r  datapath/div/i___79_i_1/O
+                         net (fo=8, routed)           0.877    21.221    datapath/div/temp_remainder[5]_41[9]
+    SLICE_X55Y16         LUT4 (Prop_lut4_I1_O)        0.124    21.345 r  datapath/div/i___5_i_32/O
+                         net (fo=1, routed)           0.000    21.345    datapath/div/i___5_i_32_n_0
+    SLICE_X55Y16         CARRY4 (Prop_carry4_S[1]_CO[3])
+                                                      0.550    21.895 r  datapath/div/i___5_i_13/CO[3]
+                         net (fo=1, routed)           0.000    21.895    datapath/div/i___5_i_13_n_0
+    SLICE_X55Y17         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.114    22.009 r  datapath/div/i___5_i_3/CO[3]
+                         net (fo=1, routed)           0.000    22.009    datapath/div/i___5_i_3_n_0
+    SLICE_X55Y18         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.114    22.123 r  datapath/div/i___5_i_1/CO[3]
+                         net (fo=192, routed)         1.042    23.166    datapath/div/i___5_i_1_n_0
+    SLICE_X57Y18         LUT3 (Prop_lut3_I2_O)        0.124    23.290 f  datapath/div/i___6_i_42/O
+                         net (fo=2, routed)           0.679    23.969    datapath/div/temp_remainder[6]_43[16]
+    SLICE_X57Y18         LUT6 (Prop_lut6_I4_O)        0.124    24.093 r  datapath/div/i___6_i_19/O
+                         net (fo=1, routed)           0.898    24.990    datapath/div/i___6_i_19_n_0
+    SLICE_X57Y16         CARRY4 (Prop_carry4_DI[0]_CO[3])
+                                                      0.526    25.516 r  datapath/div/i___6_i_4/CO[3]
+                         net (fo=1, routed)           0.000    25.516    datapath/div/i___6_i_4_n_0
+    SLICE_X57Y17         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.114    25.630 r  datapath/div/i___6_i_1/CO[3]
+                         net (fo=99, routed)          1.346    26.976    datapath/div/i___6_i_1_n_0
+    SLICE_X62Y13         LUT5 (Prop_lut5_I4_O)        0.124    27.100 r  datapath/div/i___21_i_2/O
+                         net (fo=8, routed)           0.987    28.087    datapath/div/temp_remainder[7]_45[7]
+    SLICE_X61Y13         LUT4 (Prop_lut4_I1_O)        0.124    28.211 r  datapath/div/i___7_i_32/O
+                         net (fo=1, routed)           0.000    28.211    datapath/div/i___7_i_32_n_0
+    SLICE_X61Y13         CARRY4 (Prop_carry4_S[0]_CO[3])
+                                                      0.532    28.743 r  datapath/div/i___7_i_14/CO[3]
+                         net (fo=1, routed)           0.000    28.743    datapath/div/i___7_i_14_n_0
+    SLICE_X61Y14         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.114    28.857 r  datapath/div/i___7_i_3/CO[3]
+                         net (fo=1, routed)           0.000    28.857    datapath/div/i___7_i_3_n_0
+    SLICE_X61Y15         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.114    28.971 r  datapath/div/i___7_i_1/CO[3]
+                         net (fo=157, routed)         1.221    30.192    datapath/div/i___7_i_1_n_0
+    SLICE_X61Y18         LUT6 (Prop_lut6_I5_O)        0.124    30.316 f  datapath/div/i___247_i_4/O
+                         net (fo=3, routed)           0.802    31.119    datapath/div/temp_remainder[8]_47[24]
+    SLICE_X66Y14         LUT6 (Prop_lut6_I4_O)        0.124    31.243 r  datapath/div/i___8_i_8/O
+                         net (fo=1, routed)           0.477    31.720    datapath/div/i___8_i_8_n_0
+    SLICE_X65Y14         CARRY4 (Prop_carry4_DI[0]_CO[3])
+                                                      0.526    32.246 r  datapath/div/i___8_i_1/CO[3]
+                         net (fo=111, routed)         1.637    33.883    datapath/div/i___8_i_1_n_0
+    SLICE_X63Y22         LUT5 (Prop_lut5_I4_O)        0.124    34.007 r  datapath/div/i___262_i_1/O
+                         net (fo=6, routed)           0.682    34.689    datapath/div/temp_remainder[9]_49[25]
+    SLICE_X65Y22         LUT4 (Prop_lut4_I1_O)        0.124    34.813 r  datapath/div/i___9_i_10/O
+                         net (fo=1, routed)           0.000    34.813    datapath/div/i___9_i_10_n_0
+    SLICE_X65Y22         CARRY4 (Prop_carry4_S[1]_CO[3])
+                                                      0.550    35.363 r  datapath/div/i___9_i_1/CO[3]
+                         net (fo=151, routed)         1.090    36.453    datapath/div/i___9_i_1_n_0
+    SLICE_X66Y20         LUT5 (Prop_lut5_I4_O)        0.124    36.577 f  datapath/div/i___24_i_12/O
+                         net (fo=4, routed)           0.478    37.055    datapath/div/temp_remainder[10]_51[10]
+    SLICE_X60Y20         LUT6 (Prop_lut6_I4_O)        0.124    37.179 r  datapath/div/i___24_i_30/O
+                         net (fo=1, routed)           0.733    37.912    datapath/div/i___24_i_30_n_0
+    SLICE_X61Y21         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.507    38.419 r  datapath/div/i___24_i_15/CO[3]
+                         net (fo=1, routed)           0.000    38.419    datapath/div/i___24_i_15_n_0
+    SLICE_X61Y22         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.114    38.533 r  datapath/div/i___24_i_3/CO[3]
+                         net (fo=1, routed)           0.000    38.533    datapath/div/i___24_i_3_n_0
+    SLICE_X61Y23         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.114    38.647 r  datapath/div/i___24_i_1/CO[3]
+                         net (fo=119, routed)         1.120    39.768    datapath/div/i___24_i_1_n_0
+    SLICE_X60Y21         LUT5 (Prop_lut5_I4_O)        0.124    39.892 f  datapath/div/i___10_i_1/O
+                         net (fo=8, routed)           0.476    40.368    datapath/div/temp_remainder[11]_53[10]
+    SLICE_X58Y21         LUT6 (Prop_lut6_I4_O)        0.124    40.492 r  datapath/div/i___11_i_30/O
+                         net (fo=1, routed)           0.639    41.131    datapath/div/i___11_i_30_n_0
+    SLICE_X58Y23         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.520    41.651 r  datapath/div/i___11_i_14/CO[3]
+                         net (fo=1, routed)           0.000    41.651    datapath/div/i___11_i_14_n_0
+    SLICE_X58Y24         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    41.768 r  datapath/div/i___11_i_3/CO[3]
+                         net (fo=1, routed)           0.009    41.777    datapath/div/i___11_i_3_n_0
+    SLICE_X58Y25         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117    41.894 r  datapath/div/i___11_i_1/CO[3]
+                         net (fo=136, routed)         1.311    43.205    datapath/div/i___11_i_1_n_0
+    SLICE_X60Y25         LUT5 (Prop_lut5_I4_O)        0.124    43.329 f  datapath/div/i___191_i_4/O
+                         net (fo=4, routed)           0.834    44.163    datapath/div/temp_remainder[12]_55[24]
+    SLICE_X56Y25         LUT6 (Prop_lut6_I4_O)        0.124    44.287 r  datapath/div/i___26_i_7/O
+                         net (fo=1, routed)           0.558    44.845    datapath/div/i___26_i_7_n_0
+    SLICE_X55Y25         CARRY4 (Prop_carry4_DI[0]_CO[3])
+                                                      0.526    45.371 r  datapath/div/i___26_i_1/CO[3]
+                         net (fo=122, routed)         1.127    46.498    datapath/div/i___26_i_1_n_0
+    SLICE_X55Y26         LUT5 (Prop_lut5_I4_O)        0.124    46.622 f  datapath/div/i___382_i_1/O
+                         net (fo=9, routed)           0.881    47.503    datapath/div/temp_remainder[13]_57[9]
+    SLICE_X53Y26         LUT6 (Prop_lut6_I1_O)        0.124    47.627 r  datapath/div/i___13_i_30/O
+                         net (fo=1, routed)           0.465    48.092    datapath/div/i___13_i_30_n_0
+    SLICE_X51Y25         CARRY4 (Prop_carry4_DI[1]_CO[3])
+                                                      0.507    48.599 r  datapath/div/i___13_i_14/CO[3]
+                         net (fo=1, routed)           0.000    48.599    datapath/div/i___13_i_14_n_0
+    SLICE_X51Y26         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.114    48.713 r  datapath/div/i___13_i_3/CO[3]
+                         net (fo=1, routed)           0.000    48.713    datapath/div/i___13_i_3_n_0
+    SLICE_X51Y27         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.114    48.827 r  datapath/div/i___13_i_1/CO[3]
+                         net (fo=117, routed)         0.859    49.686    datapath/div/i___13_i_1_n_0
+    SLICE_X50Y25         LUT5 (Prop_lut5_I4_O)        0.124    49.810 f  datapath/div/i___439_i_1/O
+                         net (fo=8, routed)           0.826    50.636    datapath/div/temp_remainder[14]_59[3]
+    SLICE_X48Y25         LUT6 (Prop_lut6_I1_O)        0.124    50.760 r  datapath/div/i___14_i_32/O
+                         net (fo=1, routed)           0.544    51.304    datapath/div/i___14_i_32_n_0
+    SLICE_X47Y25         CARRY4 (Prop_carry4_DI[2]_CO[3])
+                                                      0.398    51.702 r  datapath/div/i___14_i_22/CO[3]
+                         net (fo=1, routed)           0.000    51.702    datapath/div/i___14_i_22_n_0
+    SLICE_X47Y26         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.114    51.816 r  datapath/div/i___14_i_12/CO[3]
+                         net (fo=1, routed)           0.000    51.816    datapath/div/i___14_i_12_n_0
+    SLICE_X47Y27         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.114    51.930 r  datapath/div/i___14_i_3/CO[3]
+                         net (fo=1, routed)           0.000    51.930    datapath/div/i___14_i_3_n_0
+    SLICE_X47Y28         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.114    52.044 r  datapath/div/i___14_i_1/CO[3]
+                         net (fo=117, routed)         1.145    53.189    datapath/div/i___14_i_1_n_0
+    SLICE_X45Y26         LUT5 (Prop_lut5_I4_O)        0.124    53.313 f  datapath/div/intermediate_remainder[8]_i_2/O
+                         net (fo=4, routed)           0.606    53.919    datapath/div/temp_remainder[15]_61[7]
+    SLICE_X48Y26         LUT6 (Prop_lut6_I1_O)        0.124    54.043 r  datapath/div/intermediate_remainder[30]_i_29/O
+                         net (fo=1, routed)           0.671    54.714    datapath/div/intermediate_remainder[30]_i_29_n_0
+    SLICE_X44Y27         CARRY4 (Prop_carry4_DI[0]_CO[3])
+                                                      0.526    55.240 r  datapath/div/intermediate_remainder_reg[30]_i_15/CO[3]
+                         net (fo=1, routed)           0.000    55.240    datapath/div/intermediate_remainder_reg[30]_i_15_n_0
+    SLICE_X44Y28         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.114    55.354 r  datapath/div/intermediate_remainder_reg[30]_i_6/CO[3]
+                         net (fo=1, routed)           0.000    55.354    datapath/div/intermediate_remainder_reg[30]_i_6_n_0
+    SLICE_X44Y29         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.114    55.468 r  datapath/div/intermediate_remainder_reg[30]_i_3/CO[3]
+                         net (fo=32, routed)          1.275    56.742    datapath/div/intermediate_remainder_reg[30]_i_3_n_0
+    SLICE_X45Y28         LUT5 (Prop_lut5_I4_O)        0.124    56.866 r  datapath/div/intermediate_remainder[21]_i_1/O
+                         net (fo=1, routed)           0.000    56.866    datapath/div/temp_remainder[16]_63[21]
+    SLICE_X45Y28         FDCE                                         r  datapath/div/intermediate_remainder_reg[21]/D
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk_proc_clk_wiz_0 rise edge)
+                                                     40.000    40.000 r  
+    Y9                                                0.000    40.000 r  CLOCK_100MHz (IN)
+                         net (fo=0)                   0.000    40.000    mmcm/CLOCK_100MHz
+    Y9                   IBUF (Prop_ibuf_I_O)         1.420    41.420 r  mmcm/clkin1_ibufg/O
+                         net (fo=1, routed)           1.162    42.582    mmcm/clk_in1_clk_wiz_0
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                     -7.438    35.144 r  mmcm/mmcm_adv_inst/CLKOUT0
+                         net (fo=2, routed)           1.691    36.835    mmcm/clk_proc_clk_wiz_0
+    BUFGCTRL_X0Y0        BUFGCTRL (Prop_bufgctrl_I0_O)
+                                                      0.091    36.926 r  mmcm/clkout1_buf/O
+                         net (fo=1978, routed)        1.479    38.406    datapath/div/clock_processor
+    SLICE_X45Y28         FDCE                                         r  datapath/div/intermediate_remainder_reg[21]/C
+                         clock pessimism              0.577    38.982    
+                         clock uncertainty           -0.091    38.891    
+    SLICE_X45Y28         FDCE (Setup_fdce_C_D)        0.031    38.922    datapath/div/intermediate_remainder_reg[21]
+  -------------------------------------------------------------------
+                         required time                         38.922    
+                         arrival time                         -56.866    
+  -------------------------------------------------------------------
+                         slack                                -17.944    
+
+
+
+
