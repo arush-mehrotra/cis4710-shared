@@ -102,7 +102,7 @@ endinterface
 
 module MemoryAxiLite #(
     parameter int NUM_WORDS  = 32,
-    parameter int ADDR_WIDTH = 32,
+    // parameter int ADDR_WIDTH = 32,
     parameter int DATA_WIDTH = 32
 ) (
     axi_clkrst_if axi,
@@ -117,8 +117,8 @@ module MemoryAxiLite #(
 
   // [BR]RESP codes, from Section A 3.4.4 of AXI4 spec
   localparam bit [1:0] ResponseOkay = 2'b00;
-  localparam bit [1:0] ResponseSubordinateError = 2'b10;
-  localparam bit [1:0] ResponseDecodeError = 2'b11;
+  // localparam bit [1:0] ResponseSubordinateError = 2'b10;
+  // localparam bit [1:0] ResponseDecodeError = 2'b11;
 
 `ifndef FORMAL
   always_comb begin
@@ -170,8 +170,32 @@ module MemoryAxiLite #(
       end
 
       // WRITES
+      if (data.AWREADY && data.AWVALID && data.WREADY && data.WVALID) begin
+        if (WSTRB[0] == 1) begin
+          mem[data.AWADDR[AddrMsb:AddrLsb]][7:0] <= data.WDATA[7:0];
+          data.BRESP <= ResponseOkay;
+          data.BVALID <= 1;
+        end
+        if (WSTRB[1] == 1) begin
+          mem[data.AWADDR[AddrMsb:AddrLsb]][15:8] <= data.WDATA[15:8];
+          data.BRESP <= ResponseOkay;
+          data.BVALID <= 1;
+        end
+        if (WSTRB[2] == 1) begin
+          mem[data.AWADDR[AddrMsb:AddrLsb]][23:16] <= data.WDATA[23:16];
+          data.BRESP <= ResponseOkay;
+          data.BVALID <= 1;
+        end
+        if (WSTRB[3] == 1) begin
+          mem[data.AWADDR[AddrMsb:AddrLsb]][31:24] <= data.WDATA[31:24];
+          data.BRESP <= ResponseOkay;
+          data.BVALID <= 1;
+        end
+      end
 
-
+      if (!data.AWVALID && data.BVALID) begin
+        data.BVALID <= 0;
+      end
     end
   end
 
