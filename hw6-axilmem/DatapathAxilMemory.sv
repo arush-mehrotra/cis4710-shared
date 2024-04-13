@@ -542,7 +542,7 @@ module DatapathAxilMemory (
   logic [31:0] decode_state_insn;
   // Handle AXIL
   always_comb begin
-    if (imem.RVALID) begin
+    if (imem.RVALID && !branch_bool) begin
       decode_state_insn = imem.RDATA;
     end else begin
       decode_state_insn = 0;
