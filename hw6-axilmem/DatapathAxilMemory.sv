@@ -354,7 +354,7 @@ typedef enum {
 /** state at the start of Decode stage */
 typedef struct packed {
   logic [`REG_SIZE] pc;
-  logic [`INSN_SIZE] insn;
+  // logic [`INSN_SIZE] insn;
   cycle_status_e cycle_status;
 } stage_decode_t;
 
@@ -498,38 +498,62 @@ module DatapathAxilMemory (
   stage_decode_t decode_state;
   always_ff @(posedge clk) begin
     if (rst) begin
-      decode_state <= '{pc: 0, insn: 0, cycle_status: CYCLE_RESET};
+      decode_state <= '{
+          pc: 0,
+          // insn: 0, 
+          cycle_status:
+          CYCLE_RESET
+      };
     end else if (loadStall) begin
       decode_state <= '{
           pc: decode_state.pc,
-          insn: decode_state.insn,
-          cycle_status: decode_state.cycle_status
+          // insn: decode_state_insn,
+          cycle_status:
+          decode_state.cycle_status
       };
     end else if (fenceStall) begin
       decode_state <= '{
           pc: decode_state.pc,
-          insn: decode_state.insn,
-          cycle_status: decode_state.cycle_status
+          // insn: decode_state_insn,
+          cycle_status:
+          decode_state.cycle_status
       };
     end else if (divStall) begin
       decode_state <= '{
           pc: decode_state.pc,
-          insn: decode_state.insn,
-          cycle_status: decode_state.cycle_status
+          // insn: decode_state_insn,
+          cycle_status:
+          decode_state.cycle_status
       };
     end else begin
       decode_state <= '{
           pc: branch_bool > 0 ? 0 : f_pc_current,
-          insn: branch_bool > 0 ? 0 : imem.RVALID ? imem.RDATA : 0,
-          cycle_status: branch_bool > 0 ? CYCLE_TAKEN_BRANCH : f_cycle_status
+          // insn: branch_bool > 0 ? 0 : imem.RVALID ? imem.RDATA : 0,
+          cycle_status:
+          branch_bool
+          > 0 ?
+          CYCLE_TAKEN_BRANCH
+          :
+          f_cycle_status
       };
     end
   end
+
+  logic [31:0] decode_state_insn;
+  // Handle AXIL
+  always_comb begin
+    if (imem.RVALID) begin
+      decode_state_insn = imem.RDATA;
+    end else begin
+      decode_state_insn = 0;
+    end
+  end
+
   wire [255:0] d_disasm;
   Disasm #(
       .PREFIX("C")
   ) disasm_1decode (
-      .insn  (decode_state.insn),
+      .insn  (decode_state_insn),
       .disasm(d_disasm)
   );
 
@@ -551,13 +575,13 @@ module DatapathAxilMemory (
   wire [`OPCODE_SIZE] d_insn_opcode;
 
   // split R-type instruction - see section 2.2 of RiscV spec
-  assign {d_insn_funct7, d_insn_rs2, d_insn_rs1, d_insn_funct3, d_insn_rd, d_insn_opcode} = decode_state.insn;
+  assign {d_insn_funct7, d_insn_rs2, d_insn_rs1, d_insn_funct3, d_insn_rd, d_insn_opcode} = decode_state_insn;
 
   // setup for I, S, B & J type instructions
   // I - short immediates and loads
   wire [11:0] d_imm_i;
-  assign d_imm_i = decode_state.insn[31:20];
-  wire [ 4:0] d_imm_shamt = decode_state.insn[24:20];
+  assign d_imm_i = decode_state_insn[31:20];
+  wire [ 4:0] d_imm_shamt = decode_state_insn[24:20];
 
   // S - stores
   wire [11:0] d_imm_s;
@@ -572,7 +596,7 @@ module DatapathAxilMemory (
   // J - unconditional jumps
   wire [20:0] d_imm_j;
   assign {d_imm_j[20], d_imm_j[10:1], d_imm_j[11], d_imm_j[19:12], d_imm_j[0]} = {
-    decode_state.insn[31:12], 1'b0
+    decode_state_insn[31:12], 1'b0
   };
 
   wire [`REG_SIZE] d_imm_i_sext = {{20{d_imm_i[11]}}, d_imm_i[11:0]};
@@ -623,7 +647,7 @@ module DatapathAxilMemory (
     if (execute_state.insn[6:0] == OpcodeLoad && execute_state.cycle_status == CYCLE_NO_STALL) begin
       if (d_insn_rs1 == e_insn_rd || d_insn_rs2 == e_insn_rd) begin
         loadStall = 1'b1;
-        case (decode_state.insn[6:0])
+        case (decode_state_insn[6:0])
           OpcodeLui: begin
             loadStall = 1'b0;
           end
@@ -677,7 +701,7 @@ module DatapathAxilMemory (
   always_comb begin
     fenceStall = 1'b0;
     if ((execute_state.insn[6:0] == OpcodeStore && execute_state.cycle_status == CYCLE_NO_STALL) || (memory_state.insn[6:0] == OpcodeStore && memory_state.cycle_status == CYCLE_NO_STALL)) begin
-      if (decode_state.insn[6:0] == OpcodeMiscMem && (decode_state.insn[14:12] == 3'b000 || decode_state.insn[14:12] == 3'b001)) begin
+      if (decode_state_insn[6:0] == OpcodeMiscMem && (decode_state_insn[14:12] == 3'b000 || decode_state_insn[14:12] == 3'b001)) begin
         fenceStall = 1'b1;
       end
     end
@@ -687,7 +711,7 @@ module DatapathAxilMemory (
   always_comb begin
     divStall = 1'b0;
     if (execute_state.insn[6:0] == OpcodeRegReg && execute_state.insn[14:12] >= 4 && execute_state.insn[31:25] == 1 && execute_state.cycle_status == CYCLE_NO_STALL) begin
-      case (decode_state.insn[6:0])
+      case (decode_state_insn[6:0])
         OpcodeLui: begin
         end
         OpcodeAuipc: begin
@@ -743,7 +767,7 @@ module DatapathAxilMemory (
         OpcodeLui: begin
         end
         OpcodeRegImm: begin
-          case (decode_state.insn[14:12])
+          case (decode_state_insn[14:12])
             // addi
             3'b000: begin
             end
@@ -767,9 +791,9 @@ module DatapathAxilMemory (
             end
             // srli & srai
             3'b101: begin
-              if (decode_state.insn[31:25] == 7'd0) begin
+              if (decode_state_insn[31:25] == 7'd0) begin
               end else
-              if (decode_state.insn[31:25] == 7'b0100000) begin
+              if (decode_state_insn[31:25] == 7'b0100000) begin
               end else begin
                 illegal_insn = 1'b1;
               end
@@ -780,16 +804,16 @@ module DatapathAxilMemory (
           endcase
         end
         OpcodeRegReg: begin
-          case (decode_state.insn[14:12])
+          case (decode_state_insn[14:12])
             // add & sub & mul
             3'b000: begin
               // add
-              if (decode_state.insn[31:25] == 7'b0) begin
+              if (decode_state_insn[31:25] == 7'b0) begin
                 // sub
-              end else if (decode_state.insn[31:25] == 7'b0100000) begin
+              end else if (decode_state_insn[31:25] == 7'b0100000) begin
                 // mul
               end else
-              if (decode_state.insn[31:25] == 7'd1) begin
+              if (decode_state_insn[31:25] == 7'd1) begin
               end else begin
                 illegal_insn = 1'b1;
               end
@@ -797,10 +821,10 @@ module DatapathAxilMemory (
             // sll & mulh
             3'b001: begin
               // sll
-              if (decode_state.insn[31:25] == 7'd0) begin
+              if (decode_state_insn[31:25] == 7'd0) begin
               end  // mulh
               else
-              if (decode_state.insn[31:25] == 7'd1) begin
+              if (decode_state_insn[31:25] == 7'd1) begin
               end else begin
                 illegal_insn = 1'b1;
               end
@@ -808,10 +832,10 @@ module DatapathAxilMemory (
             // slt & mulhsu
             3'b010: begin
               // slt
-              if (decode_state.insn[31:25] == 7'd0) begin
+              if (decode_state_insn[31:25] == 7'd0) begin
               end  // mulhsu
               else
-              if (decode_state.insn[31:25] == 7'd1) begin
+              if (decode_state_insn[31:25] == 7'd1) begin
               end else begin
                 illegal_insn = 1'b1;
               end
@@ -819,42 +843,42 @@ module DatapathAxilMemory (
             // sltu & mulhu
             3'b011: begin
               // sltu
-              if (decode_state.insn[31:25] == 7'd0) begin
+              if (decode_state_insn[31:25] == 7'd0) begin
               end  // mulhu
               else
-              if (decode_state.insn[31:25] == 7'd1) begin
+              if (decode_state_insn[31:25] == 7'd1) begin
               end else begin
                 illegal_insn = 1'b1;
               end
             end
             // xor
             3'b100: begin
-              if (decode_state.insn[31:25] == 7'd0 || decode_state.insn[31:25] == 7'd1) begin
+              if (decode_state_insn[31:25] == 7'd0 || decode_state_insn[31:25] == 7'd1) begin
               end else begin
                 illegal_insn = 1'b1;
               end
             end
             // srl & sra
             3'b101: begin
-              if (decode_state.insn[31:25] == 7'd0) begin
+              if (decode_state_insn[31:25] == 7'd0) begin
               end else
-              if (decode_state.insn[31:25] == 7'b0100000) begin
+              if (decode_state_insn[31:25] == 7'b0100000) begin
               end else
-              if (decode_state.insn[31:25] == 7'd1) begin
+              if (decode_state_insn[31:25] == 7'd1) begin
               end else begin
                 illegal_insn = 1'b1;
               end
             end
             // or
             3'b110: begin
-              if (decode_state.insn[31:25] == 7'd0 || decode_state.insn[31:25] == 7'd1) begin
+              if (decode_state_insn[31:25] == 7'd0 || decode_state_insn[31:25] == 7'd1) begin
               end else begin
                 illegal_insn = 1'b1;
               end
             end
             // and
             3'b111: begin
-              if (decode_state.insn[31:25] == 7'd0 || decode_state.insn[31:25] == 7'd1) begin
+              if (decode_state_insn[31:25] == 7'd0 || decode_state_insn[31:25] == 7'd1) begin
               end else begin
                 illegal_insn = 1'b1;
               end
@@ -865,7 +889,7 @@ module DatapathAxilMemory (
           endcase
         end
         OpcodeBranch: begin
-          case (decode_state.insn[14:12])
+          case (decode_state_insn[14:12])
             // beq
             3'b000: begin
               if (e_bypass_rs1 == e_bypass_rs2) begin
@@ -902,13 +926,13 @@ module DatapathAxilMemory (
           endcase
         end
         OpcodeEnviron: begin
-          if (decode_state.insn[31:7] == 25'd0) begin
+          if (decode_state_insn[31:7] == 25'd0) begin
           end else begin
             illegal_insn = 1'b1;
           end
         end
         OpcodeLoad: begin
-          case (decode_state.insn[14:12])
+          case (decode_state_insn[14:12])
             // lb
             3'b000: begin
             end
@@ -930,7 +954,7 @@ module DatapathAxilMemory (
           endcase
         end
         OpcodeStore: begin
-          case (decode_state.insn[14:12])
+          case (decode_state_insn[14:12])
             // sb
             3'b000: begin
             end
@@ -946,7 +970,7 @@ module DatapathAxilMemory (
           endcase
         end
         OpcodeMiscMem: begin
-          case (decode_state.insn[14:12])
+          case (decode_state_insn[14:12])
             3'b000: begin
             end
             3'b001: begin
@@ -961,7 +985,7 @@ module DatapathAxilMemory (
         OpcodeJal: begin
         end
         OpcodeJalr: begin
-          if (decode_state.insn[14:12] == 0) begin
+          if (decode_state_insn[14:12] == 0) begin
           end else begin
             illegal_insn = 1'b1;
           end
@@ -1001,7 +1025,7 @@ module DatapathAxilMemory (
     end else begin
       execute_state <= '{
           pc: branch_bool > 0 ? 0 : decode_state.pc,
-          insn: branch_bool > 0 ? 0 : decode_state.insn,
+          insn: branch_bool > 0 ? 0 : decode_state_insn,
           cycle_status:
           illegal_insn
           ?
