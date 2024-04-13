@@ -117,8 +117,8 @@ module MemoryAxiLite #(
 
   // [BR]RESP codes, from Section A 3.4.4 of AXI4 spec
   localparam bit [1:0] ResponseOkay = 2'b00;
-  // localparam bit [1:0] ResponseSubordinateError = 2'b10;
-  // localparam bit [1:0] ResponseDecodeError = 2'b11;
+  localparam bit [1:0] ResponseSubordinateError = 2'b10;
+  localparam bit [1:0] ResponseDecodeError = 2'b11;
 
 `ifndef FORMAL
   always_comb begin
@@ -142,8 +142,35 @@ module MemoryAxiLite #(
       data.ARREADY <= 1;
       // start out ready to accept an incoming write
       data.AWREADY <= 1;
-      data.WREADY <= 1;
+      data.WREADY  <= 1;
+      // drive RVALID and BVALID low
+      insn.RVALID  <= 0;
+      data.RVALID  <= 0;
+      data.BVALID  <= 0;
     end else begin
+      // READS
+      if (insn.ARVALID && insn.ARREADY) begin
+        insn.RDATA  <= mem_array[insn.ARADDR[AddrMsb:AddrLsb]];
+        insn.RRESP  <= ResponseOkay;
+        insn.RVALID <= 1;
+      end
+
+      if (!insn.ARVALID && insn.RVALID) begin
+        insn.RVALID <= 0;
+      end
+
+      if (data.ARVALID && data.ARREADY) begin
+        data.RDATA  <= mem_array[data.ARADDR[AddrMsb:AddrLsb]];
+        data.RRESP  <= ResponseOkay;
+        data.RVALID <= 1;
+      end
+
+      if (!data.ARVALID && data.RVALID) begin
+        insn.RVALID <= 0;
+      end
+
+      // WRITES
+
 
     end
   end
@@ -414,13 +441,18 @@ module RiscvProcessor (
   );
 
   // HW6 memory interface
-  axi_clkrst_if axi_cr (.ACLK(clk), .ARESETn(~rst));
+  axi_clkrst_if axi_cr (
+      .ACLK(clk),
+      .ARESETn(~rst)
+  );
   axi_if axi_data ();
   axi_if axi_insn ();
-  MemoryAxiLite #(.NUM_WORDS(8192)) mem (
-    .axi(axi_cr),
-    .insn(axi_insn.subord),
-    .data(axi_data.subord)
+  MemoryAxiLite #(
+      .NUM_WORDS(8192)
+  ) mem (
+      .axi (axi_cr),
+      .insn(axi_insn.subord),
+      .data(axi_data.subord)
   );
 
   DatapathAxilMemory datapath (
