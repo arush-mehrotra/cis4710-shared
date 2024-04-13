@@ -496,7 +496,13 @@ module DatapathAxilMemory (
 
   // this shows how to package up state in a `struct packed`, and how to pass it between stages
   stage_decode_t decode_state;
+  logic branch_bubble;
   always_ff @(posedge clk) begin
+    if(branch_bool) begin
+      branch_bubble <= 1;
+    end else begin
+      branch_bubble <= 0;
+    end
     if (rst) begin
       decode_state <= '{
           pc: 0,
@@ -542,7 +548,7 @@ module DatapathAxilMemory (
   logic [31:0] decode_state_insn;
   // Handle AXIL
   always_comb begin
-    if (imem.RVALID && !branch_bool) begin
+    if (imem.RVALID && !branch_bubble) begin
       decode_state_insn = imem.RDATA;
     end else begin
       decode_state_insn = 0;
