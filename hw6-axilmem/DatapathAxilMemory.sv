@@ -396,12 +396,12 @@ module DatapathAxilMemory (
     axi_if.manager imem,
 
     // Once imem is working, replace this interface to dmem...
-    output logic [`REG_SIZE] addr_to_dmem,
-    input wire [`REG_SIZE] load_data_from_dmem,
-    output logic [`REG_SIZE] store_data_to_dmem,
-    output logic [3:0] store_we_to_dmem,
+    // output logic [`REG_SIZE] addr_to_dmem,
+    // input wire [`REG_SIZE] load_data_from_dmem,
+    // output logic [`REG_SIZE] store_data_to_dmem,
+    // output logic [3:0] store_we_to_dmem,
     // ...with this AXIL one
-    // axi_if.manager dmem,
+    axi_if.manager dmem,
 
     output logic halt,
 
@@ -498,7 +498,7 @@ module DatapathAxilMemory (
   stage_decode_t decode_state;
   logic branch_bubble;
   always_ff @(posedge clk) begin
-    if(branch_bool) begin
+    if (branch_bool) begin
       branch_bubble <= 1;
     end else begin
       branch_bubble <= 0;
@@ -1480,16 +1480,16 @@ module DatapathAxilMemory (
   logic [31:0] memoryResult;
 
   // memory we sent to dmem
-  logic [31:0] tempAddr;
-  assign addr_to_dmem = tempAddr;
+  // logic [31:0] tempAddr;
+  // assign addr_to_dmem = tempAddr;
 
   // write enable for dmem
-  logic [3:0] tempWe;
-  assign store_we_to_dmem = tempWe;
+  // logic [3:0] tempWe;
+  // assign store_we_to_dmem = tempWe;
 
   // value we store in dmem
-  logic [31:0] tempStore;
-  assign store_data_to_dmem = tempStore;
+  // logic [31:0] tempStore;
+  // assign store_data_to_dmem = tempStore;
 
   // bypass value
   logic [31:0] rs2_bypass;
@@ -1503,8 +1503,11 @@ module DatapathAxilMemory (
 
   always_comb begin
     memoryResult = memory_state.alu_result;
-    tempAddr = 32'b0;
-    tempWe = 4'b0000;
+    // tempAddr = 32'b0;
+    // tempWe = 4'b0000;
+    dmem.ARVALID = 0;
+    dmem.AWVALID = 0;
+    dmem.WVALID  = 0;
     if (memory_state.cycle_status == CYCLE_NO_STALL) begin
       case (memory_state.insn[6:0])
         OpcodeLui: begin
@@ -1583,57 +1586,38 @@ module DatapathAxilMemory (
           case (memory_state.insn[14:12])
             // lb
             3'b000: begin
-              tempAddr = (memory_state.alu_result & ~32'd3);
-              if (memory_state.alu_result[1:0] == 2'b00) begin
-                memoryResult = ({{24{load_data_from_dmem[7]}}, load_data_from_dmem[7:0]});
-              end else if (memory_state.alu_result[1:0] == 2'b01) begin
-                memoryResult = ({{24{load_data_from_dmem[15]}}, load_data_from_dmem[15:8]});
-              end else if (memory_state.alu_result[1:0] == 2'b10) begin
-                memoryResult = ({{24{load_data_from_dmem[23]}}, load_data_from_dmem[23:16]});
-              end else begin
-                memoryResult = ({{24{load_data_from_dmem[31]}}, load_data_from_dmem[31:24]});
-              end
+              dmem.ARVALID = 1;
+              dmem.ARADDR  = (memory_state.alu_result & ~32'd3);
+              memoryResult = memory_state.alu_result;
             end
             // lh
             3'b001: begin
               if (memory_state.alu_result[0] == 1'b0) begin
-                tempAddr = (memory_state.alu_result & ~32'd3);
-                if (memory_state.alu_result[1] == 1'b0) begin
-                  memoryResult = {{16{load_data_from_dmem[15]}}, load_data_from_dmem[15:0]};
-                end else begin
-                  memoryResult = {{16{load_data_from_dmem[31]}}, load_data_from_dmem[31:16]};
-                end
+                dmem.ARVALID = 1;
+                dmem.ARADDR  = (memory_state.alu_result & ~32'd3);
+                memoryResult = memory_state.alu_result;
               end
             end
             // lw
             3'b010: begin
               if (memory_state.alu_result[1:0] == 2'b00) begin
-                tempAddr = memory_state.alu_result;
-                memoryResult = load_data_from_dmem;
+                dmem.ARVALID = 1;
+                dmem.ARADDR  = memory_state.alu_result;
+                memoryResult = memory_state.alu_result;
               end
             end
             // lbu
             3'b100: begin
-              tempAddr = (memory_state.alu_result & ~32'd3);
-              if (memory_state.alu_result[1:0] == 2'b00) begin
-                memoryResult = ({{24{1'b0}}, load_data_from_dmem[7:0]});
-              end else if (memory_state.alu_result[1:0] == 2'b01) begin
-                memoryResult = ({{24{1'b0}}, load_data_from_dmem[15:8]});
-              end else if (memory_state.alu_result[1:0] == 2'b10) begin
-                memoryResult = ({{24{1'b0}}, load_data_from_dmem[23:16]});
-              end else begin
-                memoryResult = ({{24{1'b0}}, load_data_from_dmem[31:24]});
-              end
+              dmem.ARVALID = 1;
+              dmem.ARADDR  = (memory_state.alu_result & ~32'd3);
+              memoryResult = memory_state.alu_result;
             end
             // lhu
             3'b101: begin
               if (memory_state.alu_result[0] == 1'b0) begin
-                tempAddr = (memory_state.alu_result & ~32'd3);
-                if (memory_state.alu_result[1] == 1'b0) begin
-                  memoryResult = {{16{1'b0}}, load_data_from_dmem[15:0]};
-                end else begin
-                  memoryResult = {{16{1'b0}}, load_data_from_dmem[31:16]};
-                end
+                dmem.ARVALID = 1;
+                dmem.ARADDR  = (memory_state.alu_result & ~32'd3);
+                memoryResult = memory_state.alu_result;
               end
             end
             default: begin
@@ -1644,40 +1628,44 @@ module DatapathAxilMemory (
           case (memory_state.insn[14:12])
             // sb
             3'b000: begin
-              tempAddr = (memory_state.alu_result & ~32'd3);
+              dmem.AWVALID = 1;
+              dmem.AWADDR  = (memory_state.alu_result & ~32'd3);
+              dmem.WVALID  = 1;
               if (memory_state.alu_result[1:0] == 2'b00) begin
-                tempWe = 4'b0001;
-                tempStore = {load_data_from_dmem[31:8], rs2_bypass[7:0]};
+                dmem.WSTRB = 4'b0001;
+                dmem.WDATA = {24'b0, rs2_bypass[7:0]};
               end else if (memory_state.alu_result[1:0] == 2'b01) begin
-                tempWe = 4'b0010;
-                tempStore = {load_data_from_dmem[31:16], rs2_bypass[7:0], load_data_from_dmem[7:0]};
+                dmem.WSTRB = 4'b0010;
+                dmem.WDATA = {16'b0, rs2_bypass[7:0], 8'b0};
               end else if (memory_state.alu_result[1:0] == 2'b10) begin
-                tempWe = 4'b0100;
-                tempStore = {
-                  load_data_from_dmem[31:24], rs2_bypass[7:0], load_data_from_dmem[15:0]
-                };
+                dmem.WSTRB = 4'b0100;
+                dmem.WDATA = {8'b0, rs2_bypass[7:0], 16'b0};
               end else begin
-                tempWe = 4'b1000;
-                tempStore = {rs2_bypass[7:0], load_data_from_dmem[23:0]};
+                dmem.WSTRB = 4'b1000;
+                dmem.WDATA = {rs2_bypass[7:0], 24'b0};
               end
             end
             3'b001: begin
               if (memory_state.alu_result[0] == 1'b0) begin
-                tempAddr = (memory_state.alu_result & ~32'd3);
+                dmem.AWVALID = 1;
+                dmem.WVALID  = 1;
+                dmem.AWADDR  = (memory_state.alu_result & ~32'd3);
                 if (memory_state.alu_result[1] == 1'b0) begin
-                  tempWe = 4'b0011;
-                  tempStore = {16'b0, rs2_bypass[15:0]};
+                  dmem.WSTRB = 4'b0011;
+                  dmem.WDATA = {16'b0, rs2_bypass[15:0]};
                 end else begin
-                  tempWe = 4'b1100;
-                  tempStore = {rs2_bypass[15:0], 16'b0};
+                  dmem.WSTRB = 4'b1100;
+                  dmem.WDATA = {rs2_bypass[15:0], 16'b0};
                 end
               end
             end
             3'b010: begin
               if (memory_state.alu_result[1:0] == 2'b00) begin
-                tempAddr = memory_state.alu_result;
-                tempWe = 4'b1111;
-                tempStore = rs2_bypass;
+                dmem.AWVALID = 1;
+                dmem.WVALID  = 1;
+                dmem.AWADDR  = memory_state.alu_result;
+                dmem.WSTRB   = 4'b1111;
+                dmem.WDATA   = rs2_bypass;
               end
             end
             default: begin
@@ -1777,10 +1765,13 @@ module DatapathAxilMemory (
   wire [`REG_SIZE] w_imm_b_sext = {{19{w_imm_b[12]}}, w_imm_b[12:0]};
   wire [`REG_SIZE] w_imm_j_sext = {{11{w_imm_j[20]}}, w_imm_j[20:0]};
 
+  logic [31:0] loadResult;
+
   always_comb begin
     regfile_we = 1'b0;
     halt = 1'b0;
     regfile_rd_data = 0;
+    loadResult = 0;
     if (writeback_state.cycle_status == CYCLE_NO_STALL) begin
       case (w_insn_opcode)
         OpcodeLui: begin
@@ -1801,7 +1792,63 @@ module DatapathAxilMemory (
           end
         end
         OpcodeLoad: begin
-          regfile_rd_data = writeback_state.alu_result;
+          case (writeback_state.insn[14:12])
+            // lb
+            3'b000: begin
+              if (dmem.RVALID == 1) begin
+                if (writeback_state.alu_result[1:0] == 2'b00) begin
+                  loadResult = ({{24{dmem.RDATA[7]}}, dmem.RDATA[7:0]});
+                end else if (writeback_state.alu_result[1:0] == 2'b01) begin
+                  loadResult = ({{24{dmem.RDATA[15]}}, dmem.RDATA[15:8]});
+                end else if (writeback_state.alu_result[1:0] == 2'b10) begin
+                  loadResult = ({{24{dmem.RDATA[23]}}, dmem.RDATA[23:16]});
+                end else begin
+                  loadResult = ({{24{dmem.RDATA[31]}}, dmem.RDATA[31:24]});
+                end
+              end
+            end
+            // lh
+            3'b001: begin
+              if (writeback_state.alu_result[0] == 1'b0) begin
+                if (writeback_state.alu_result[1] == 1'b0) begin
+                  loadResult = {{16{dmem.RDATA[15]}}, dmem.RDATA[15:0]};
+                end else begin
+                  loadResult = {{16{dmem.RDATA[31]}}, dmem.RDATA[31:16]};
+                end
+              end
+            end
+            // lw
+            3'b010: begin
+              if (writeback_state.alu_result[1:0] == 2'b00) begin
+                loadResult = dmem.RDATA;
+              end
+            end
+            // lbu
+            3'b100: begin
+              if (writeback_state.alu_result[1:0] == 2'b00) begin
+                loadResult = ({{24{1'b0}}, dmem.RDATA[7:0]});
+              end else if (writeback_state.alu_result[1:0] == 2'b01) begin
+                loadResult = ({{24{1'b0}}, dmem.RDATA[15:8]});
+              end else if (writeback_state.alu_result[1:0] == 2'b10) begin
+                loadResult = ({{24{1'b0}}, dmem.RDATA[23:16]});
+              end else begin
+                loadResult = ({{24{1'b0}}, dmem.RDATA[31:24]});
+              end
+            end
+            // lhu
+            3'b101: begin
+              if (memory_state.alu_result[0] == 1'b0) begin
+                if (writeback_state.alu_result[1] == 1'b0) begin
+                  loadResult = {{16{1'b0}}, dmem.RDATA[15:0]};
+                end else begin
+                  loadResult = {{16{1'b0}}, dmem.RDATA[31:16]};
+                end
+              end
+            end
+            default: begin
+            end
+          endcase
+          regfile_rd_data = loadResult;
           regfile_we = 1;
         end
         OpcodeStore: begin
@@ -1955,11 +2002,11 @@ module RiscvProcessor (
       .clk(clk),
       .rst(rst),
       .imem(axi_insn.manager),
-      // .dmem(axi_data.manager),
-      .addr_to_dmem(mem_data_addr),
-      .store_data_to_dmem(mem_data_to_write),
-      .store_we_to_dmem(mem_data_we),
-      .load_data_from_dmem(mem_data_loaded_value),
+      .dmem(axi_data.manager),
+      // .addr_to_dmem(mem_data_addr),
+      // .store_data_to_dmem(mem_data_to_write),
+      // .store_we_to_dmem(mem_data_we),
+      // .load_data_from_dmem(mem_data_loaded_value),
       .halt(halt),
       .trace_writeback_pc(trace_writeback_pc),
       .trace_writeback_insn(trace_writeback_insn),
