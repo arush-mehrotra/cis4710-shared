@@ -634,11 +634,11 @@ module DatapathAxilMemory (
     wd_bypass_rs2 = regfile_rs2_data;
 
     if (w_insn_rd != 0 && writeback_state.cycle_status == CYCLE_NO_STALL && regfile_we == 1 && d_insn_rs1 == w_insn_rd) begin
-      wd_bypass_rs1 = writeback_state.alu_result;
+      wd_bypass_rs1 = writebackBypassResult;
     end
 
     if (w_insn_rd != 0 && writeback_state.cycle_status == CYCLE_NO_STALL && regfile_we == 1 && d_insn_rs2 == w_insn_rd) begin
-      wd_bypass_rs2 = writeback_state.alu_result;
+      wd_bypass_rs2 = writebackBypassResult;
     end
 
   end
@@ -1124,7 +1124,7 @@ module DatapathAxilMemory (
         // WX bypass logic
         if ((e_insn_rs1 == w_insn_rd) && w_insn_rd != 0 && writeback_state.cycle_status == CYCLE_NO_STALL && writeback_state.insn[6:0] != OpcodeBranch && writeback_state.insn[6:0] != OpcodeStore && writeback_state.insn[6:0] != OpcodeEnviron && writeback_state.insn[6:0] != OpcodeMiscMem
         && execute_state.insn[6:0] != OpcodeLui && execute_state.insn[6:0] != OpcodeAuipc && execute_state.insn[6:0] != OpcodeJal && execute_state.insn[6:0] != OpcodeEnviron && execute_state.insn[6:0] != OpcodeMiscMem) begin
-          e_bypass_rs1 = writeback_state.alu_result;
+          e_bypass_rs1 = writebackBypassResult;
           e_unsigned_bypass_rs1 = e_bypass_rs1[31] ? ~e_bypass_rs1 + 1 : e_bypass_rs1;
         end else begin
           e_bypass_rs1 = execute_state.rs1_data;
@@ -1140,7 +1140,7 @@ module DatapathAxilMemory (
         // WX bypass logic
         if ((e_insn_rs2 == w_insn_rd) && w_insn_rd != 0 && writeback_state.cycle_status == CYCLE_NO_STALL && writeback_state.insn[6:0] != OpcodeBranch && writeback_state.insn[6:0] != OpcodeStore && writeback_state.insn[6:0] != OpcodeEnviron && writeback_state.insn[6:0] != OpcodeMiscMem
         && (execute_state.insn[6:0] == OpcodeRegReg || execute_state.insn[6:0] == OpcodeBranch || execute_state.insn[6:0] == OpcodeStore)) begin
-          e_bypass_rs2 = writeback_state.alu_result;
+          e_bypass_rs2 = writebackBypassResult;
           e_unsigned_bypass_rs2 = e_bypass_rs2[31] ? ~e_bypass_rs2 + 1 : e_bypass_rs2;
         end else begin
           e_bypass_rs2 = execute_state.rs2_data;
@@ -1497,7 +1497,7 @@ module DatapathAxilMemory (
     rs2_bypass = memory_state.rs2_data;
     if (writeback_state.cycle_status == CYCLE_NO_STALL && writeback_state.insn[6:0] == OpcodeLoad && memory_state.insn[6:0] == OpcodeStore &&
     w_insn_rd == m_insn_rs2) begin
-      rs2_bypass = writeback_state.alu_result;
+      rs2_bypass = writebackBypassResult;
     end
   end
 
@@ -1767,7 +1767,10 @@ module DatapathAxilMemory (
 
   logic [31:0] loadResult;
 
+  logic [31:0] writebackBypassResult;
+
   always_comb begin
+    writebackBypassResult = writeback_state.alu_result;
     regfile_we = 1'b0;
     halt = 1'b0;
     regfile_rd_data = 0;
@@ -1848,6 +1851,7 @@ module DatapathAxilMemory (
             default: begin
             end
           endcase
+          writebackBypassResult = loadResult;
           regfile_rd_data = loadResult;
           regfile_we = 1;
         end
