@@ -112,15 +112,16 @@ module RiscvSystem (  // input clock
       .store_we_to_dmem   (store_we_to_dmem)
   );
 
-  DatapathAxilMemory datapath (
-      .clk(clk),
-      .rst(rst),
-      .imem(axi_insn.manager),
-      .dmem(axi_data.manager),
-      .halt(halt),
-      .trace_writeback_pc(trace_writeback_pc),
-      .trace_writeback_insn(trace_writeback_insn),
-      .trace_writeback_cycle_status(trace_writeback_cycle_status)
+  DatapathPipelined datapath (
+      .clk(clock_processor),
+      .rst(global_reset),
+      .pc_to_imem(pc_to_imem),
+      .insn_from_imem(insn_from_imem),
+      .addr_to_dmem(addr_from_proc),
+      .store_data_to_dmem(store_data_from_proc),
+      .store_we_to_dmem(store_we_from_proc),
+      .load_data_from_dmem(load_data_to_proc),
+      .halt(datapath_halted)
   );
 
   // wire up LEDs
