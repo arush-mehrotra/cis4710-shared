@@ -52,6 +52,27 @@ module RegFile (
     input logic rst
 );
   // TODO: copy your RegFile code here
+  localparam int NumRegs = 32;
+  genvar i;
+  logic [`REG_SIZE] regs[NumRegs];
+
+  assign regs[0]  = 32'd0;
+  assign rs1_data = regs[rs1];
+  assign rs2_data = regs[rs2];
+
+  generate
+    for (i = 0; i < NumRegs; i++) begin : g_loop
+      always_ff @(posedge clk) begin
+        if (rst) begin
+          regs[i] <= 32'd0;
+        end else begin
+          if (we && rd == i && rd != 0) begin
+            regs[i] <= rd_data;
+          end
+        end
+      end
+    end
+  endgenerate
 
 endmodule
 
@@ -102,7 +123,6 @@ endinterface
 
 module MemoryAxiLite #(
     parameter int NUM_WORDS  = 32,
-    parameter int ADDR_WIDTH = 32,
     parameter int DATA_WIDTH = 32
 ) (
     axi_clkrst_if axi,
@@ -142,9 +162,60 @@ module MemoryAxiLite #(
       data.ARREADY <= 1;
       // start out ready to accept an incoming write
       data.AWREADY <= 1;
-      data.WREADY <= 1;
+      data.WREADY  <= 1;
+      // drive RVALID and BVALID low
+      insn.RVALID  <= 0;
+      data.RVALID  <= 0;
+      data.BVALID  <= 0;
     end else begin
+      // READS
+      if (insn.ARVALID && insn.ARREADY) begin
+        insn.RDATA  <= mem_array[insn.ARADDR[AddrMsb:AddrLsb]];
+        insn.RRESP  <= ResponseOkay;
+        insn.RVALID <= 1;
+      end
 
+      if (!insn.ARVALID && insn.RVALID) begin
+        insn.RVALID <= 0;
+      end
+
+      if (data.ARVALID && data.ARREADY) begin
+        data.RDATA  <= mem_array[data.ARADDR[AddrMsb:AddrLsb]];
+        data.RRESP  <= ResponseOkay;
+        data.RVALID <= 1;
+      end
+
+      if (!data.ARVALID && data.RVALID) begin
+        data.RVALID <= 0;
+      end
+
+      // WRITES
+      if (data.AWREADY && data.AWVALID && data.WREADY && data.WVALID) begin
+        if (data.WSTRB[0] == 1) begin
+          mem_array[data.AWADDR[AddrMsb:AddrLsb]][7:0] <= data.WDATA[7:0];
+          data.BRESP <= ResponseOkay;
+          data.BVALID <= 1;
+        end
+        if (data.WSTRB[1] == 1) begin
+          mem_array[data.AWADDR[AddrMsb:AddrLsb]][15:8] <= data.WDATA[15:8];
+          data.BRESP <= ResponseOkay;
+          data.BVALID <= 1;
+        end
+        if (data.WSTRB[2] == 1) begin
+          mem_array[data.AWADDR[AddrMsb:AddrLsb]][23:16] <= data.WDATA[23:16];
+          data.BRESP <= ResponseOkay;
+          data.BVALID <= 1;
+        end
+        if (data.WSTRB[3] == 1) begin
+          mem_array[data.AWADDR[AddrMsb:AddrLsb]][31:24] <= data.WDATA[31:24];
+          data.BRESP <= ResponseOkay;
+          data.BVALID <= 1;
+        end
+      end
+
+      if (!data.AWVALID && data.BVALID) begin
+        data.BVALID <= 0;
+      end
     end
   end
 
@@ -276,25 +347,47 @@ typedef enum {
   /** a stall cycle that arose from a div/rem-to-use stall */
   CYCLE_DIV2USE = 16,
   /** a stall cycle that arose from a fence insn */
-  CYCLE_FENCE = 32
+  CYCLE_FENCEI = 32
 } cycle_status_e;
+
+/** state at the start of Decode stage */
+typedef struct packed {
+  logic [`REG_SIZE] pc;
+  // logic [`INSN_SIZE] insn;
+  cycle_status_e cycle_status;
+} stage_decode_t;
+
+/** state at the start of Execute stage */
+typedef struct packed {
+  logic [`REG_SIZE] pc;
+  logic [`INSN_SIZE] insn;
+  cycle_status_e cycle_status;
+  logic [`REG_SIZE] rs1_data;
+  logic [`REG_SIZE] rs2_data;
+} stage_execute_t;
+
+/** state at the start of Memory stage */
+typedef struct packed {
+  logic [`REG_SIZE] pc;
+  logic [`INSN_SIZE] insn;
+  cycle_status_e cycle_status;
+  logic [`REG_SIZE] alu_result;
+  // relevant only for stores
+  logic [`REG_SIZE] rs2_data;
+} stage_memory_t;
+
+/** state at the start of Writeback stage */
+typedef struct packed {
+  logic [`REG_SIZE] pc;
+  logic [`INSN_SIZE] insn;
+  cycle_status_e cycle_status;
+  logic [`REG_SIZE] alu_result;
+} stage_writeback_t;
 
 module DatapathAxilMemory (
     input wire clk,
     input wire rst,
-
-    // Start by replacing this interface to imem...
-    // output logic [`REG_SIZE] pc_to_imem,
-    // input wire [`INSN_SIZE] insn_from_imem,
-    // ...with this AXIL one.
     axi_if.manager imem,
-
-    // Once imem is working, replace this interface to dmem...
-    // output logic [`REG_SIZE] addr_to_dmem,
-    // input wire [`REG_SIZE] load_data_from_dmem,
-    // output logic [`REG_SIZE] store_data_to_dmem,
-    // output logic [3:0] store_we_to_dmem,
-    // ...with this AXIL one
     axi_if.manager dmem,
 
     output logic halt,
@@ -308,6 +401,1433 @@ module DatapathAxilMemory (
 );
 
   // TODO: your code here
+  // opcodes - see section 19 of RiscV spec
+  localparam bit [`OPCODE_SIZE] OpcodeLoad = 7'b00_000_11;
+  localparam bit [`OPCODE_SIZE] OpcodeStore = 7'b01_000_11;
+  localparam bit [`OPCODE_SIZE] OpcodeBranch = 7'b11_000_11;
+  localparam bit [`OPCODE_SIZE] OpcodeJalr = 7'b11_001_11;
+  localparam bit [`OPCODE_SIZE] OpcodeMiscMem = 7'b00_011_11;
+  localparam bit [`OPCODE_SIZE] OpcodeJal = 7'b11_011_11;
+
+  localparam bit [`OPCODE_SIZE] OpcodeRegImm = 7'b00_100_11;
+  localparam bit [`OPCODE_SIZE] OpcodeRegReg = 7'b01_100_11;
+  localparam bit [`OPCODE_SIZE] OpcodeEnviron = 7'b11_100_11;
+
+  localparam bit [`OPCODE_SIZE] OpcodeAuipc = 7'b00_101_11;
+  localparam bit [`OPCODE_SIZE] OpcodeLui = 7'b01_101_11;
+
+  // cycle counter, not really part of any stage but useful for orienting within GtkWave
+  // do not rename this as the testbench uses this value
+  logic [`REG_SIZE] cycles_current;
+  always_ff @(posedge clk) begin
+    if (rst) begin
+      cycles_current <= 0;
+    end else begin
+      cycles_current <= cycles_current + 1;
+    end
+  end
+
+  /***************/
+  /* FETCH STAGE */
+  /***************/
+
+  logic [`REG_SIZE] f_pc_current;
+  // wire [`REG_SIZE] f_insn;
+  cycle_status_e f_cycle_status;
+
+  // program counter
+  always_ff @(posedge clk) begin
+    if (rst) begin
+      f_pc_current   <= 32'd0;
+      // NB: use CYCLE_NO_STALL since this is the value that will persist after the last reset cycle
+      f_cycle_status <= CYCLE_NO_STALL;
+    end else if (loadStall) begin
+      f_pc_current <= f_pc_current;
+    end else if (fenceStall) begin
+      f_pc_current <= f_pc_current;
+    end else if (divStall) begin
+      f_pc_current <= f_pc_current;
+    end else begin
+      f_cycle_status <= CYCLE_NO_STALL;
+      if (branch_bool > 0) begin
+        f_pc_current <= branch_taken;
+      end else begin
+        f_pc_current <= f_pc_current + 4;
+      end
+    end
+  end
+
+  // USE AXIL
+  always_comb begin
+    imem.ARVALID = 1;
+    if (loadStall == 1 || fenceStall == 1 || divStall == 1) begin
+      imem.ARADDR = f_pc_current - 4;
+    end else begin
+      imem.ARADDR = f_pc_current;
+    end
+  end
+
+  // Here's how to disassemble an insn into a string you can view in GtkWave.
+  // Use PREFIX to provide a 1-character tag to identify which stage the insn comes from.
+  wire [255:0] f_disasm;
+  Disasm #(
+      .PREFIX("F")
+  ) disasm_0fetch (
+      .insn  (0),
+      .disasm(f_disasm)
+  );
+
+  /****************/
+  /* DECODE STAGE */
+  /****************/
+
+  // this shows how to package up state in a `struct packed`, and how to pass it between stages
+  stage_decode_t decode_state;
+  logic branch_bubble;
+  always_ff @(posedge clk) begin
+    if (branch_bool) begin
+      branch_bubble <= 1;
+    end else begin
+      branch_bubble <= 0;
+    end
+    if (rst) begin
+      decode_state <= '{pc: 0, cycle_status: CYCLE_RESET};
+    end else if (loadStall) begin
+      decode_state <= '{pc: decode_state.pc, cycle_status: decode_state.cycle_status};
+    end else if (fenceStall) begin
+      decode_state <= '{pc: decode_state.pc, cycle_status: decode_state.cycle_status};
+    end else if (divStall) begin
+      decode_state <= '{pc: decode_state.pc, cycle_status: decode_state.cycle_status};
+    end else begin
+      decode_state <= '{
+          pc: branch_bool > 0 ? 0 : f_pc_current,
+          cycle_status: branch_bool > 0 ? CYCLE_TAKEN_BRANCH : f_cycle_status
+      };
+    end
+  end
+
+  logic [31:0] decode_state_insn;
+  // Handle AXIL
+  always_comb begin
+    if (imem.RVALID && !branch_bubble) begin
+      decode_state_insn = imem.RDATA;
+    end else begin
+      decode_state_insn = 0;
+    end
+  end
+
+  wire [255:0] d_disasm;
+  Disasm #(
+      .PREFIX("C")
+  ) disasm_1decode (
+      .insn  (decode_state_insn),
+      .disasm(d_disasm)
+  );
+
+  // TODO: your code here, though you will also need to modify some of the code above
+  // TODO: the testbench requires that your register file instance is named `rf`
+
+  // instatiate register file data
+  logic [`REG_SIZE] regfile_rs1_data;
+  logic [`REG_SIZE] regfile_rs2_data;
+  logic [`REG_SIZE] regfile_rd_data;
+
+  // decode instruction
+  // components of the instruction
+  wire [6:0] d_insn_funct7;
+  wire [4:0] d_insn_rs2;
+  wire [4:0] d_insn_rs1;
+  wire [2:0] d_insn_funct3;
+  wire [4:0] d_insn_rd;
+  wire [`OPCODE_SIZE] d_insn_opcode;
+
+  // split R-type instruction - see section 2.2 of RiscV spec
+  assign {d_insn_funct7, d_insn_rs2, d_insn_rs1, d_insn_funct3, d_insn_rd, d_insn_opcode} = decode_state_insn;
+
+  // setup for I, S, B & J type instructions
+  // I - short immediates and loads
+  wire [11:0] d_imm_i;
+  assign d_imm_i = decode_state_insn[31:20];
+  wire [ 4:0] d_imm_shamt = decode_state_insn[24:20];
+
+  // S - stores
+  wire [11:0] d_imm_s;
+  assign d_imm_s[11:5] = d_insn_funct7, d_imm_s[4:0] = d_insn_rd;
+
+  // B - conditionals
+  wire [12:0] d_imm_b;
+  assign {d_imm_b[12], d_imm_b[10:5]} = d_insn_funct7,
+      {d_imm_b[4:1], d_imm_b[11]} = d_insn_rd,
+      d_imm_b[0] = 1'b0;
+
+  // J - unconditional jumps
+  wire [20:0] d_imm_j;
+  assign {d_imm_j[20], d_imm_j[10:1], d_imm_j[11], d_imm_j[19:12], d_imm_j[0]} = {
+    decode_state_insn[31:12], 1'b0
+  };
+
+  wire [`REG_SIZE] d_imm_i_sext = {{20{d_imm_i[11]}}, d_imm_i[11:0]};
+  wire [`REG_SIZE] d_imm_s_sext = {{20{d_imm_s[11]}}, d_imm_s[11:0]};
+  wire [`REG_SIZE] d_imm_b_sext = {{19{d_imm_b[12]}}, d_imm_b[12:0]};
+  wire [`REG_SIZE] d_imm_j_sext = {{11{d_imm_j[20]}}, d_imm_j[20:0]};
+
+  logic regfile_we;
+
+  // instatiate register file
+  RegFile rf (
+      .clk(clk),
+      .rst(rst),
+      .we(regfile_we),
+      .rd(w_insn_rd),
+      .rs1(d_insn_rs1),
+      .rs2(d_insn_rs2),
+      .rd_data(regfile_rd_data),
+      .rs1_data(regfile_rs1_data),
+      .rs2_data(regfile_rs2_data)
+  );
+
+  // WD bypass
+  logic [31:0] wd_bypass_rs1;
+  logic [31:0] wd_bypass_rs2;
+
+  always_comb begin
+    wd_bypass_rs1 = regfile_rs1_data;
+    wd_bypass_rs2 = regfile_rs2_data;
+
+    if (w_insn_rd != 0 && writeback_state.cycle_status == CYCLE_NO_STALL && regfile_we == 1 && d_insn_rs1 == w_insn_rd) begin
+      wd_bypass_rs1 = writebackBypassResult;
+    end
+
+    if (w_insn_rd != 0 && writeback_state.cycle_status == CYCLE_NO_STALL && regfile_we == 1 && d_insn_rs2 == w_insn_rd) begin
+      wd_bypass_rs2 = writebackBypassResult;
+    end
+
+  end
+
+  logic illegal_insn;
+
+  logic loadStall;
+
+  // check for load-to-use stall
+  always_comb begin
+    loadStall = 1'b0;
+    if (execute_state.insn[6:0] == OpcodeLoad && execute_state.cycle_status == CYCLE_NO_STALL) begin
+      if (d_insn_rs1 == e_insn_rd || d_insn_rs2 == e_insn_rd) begin
+        loadStall = 1'b1;
+        case (decode_state_insn[6:0])
+          OpcodeLui: begin
+            loadStall = 1'b0;
+          end
+          OpcodeAuipc: begin
+            loadStall = 1'b0;
+          end
+          OpcodeRegImm: begin
+            if (d_insn_rs1 != e_insn_rd) begin
+              loadStall = 1'b0;
+            end
+          end
+          OpcodeRegReg: begin
+          end
+          OpcodeLoad: begin
+            if (d_insn_rs1 != e_insn_rd) begin
+              loadStall = 1'b0;
+            end
+          end
+          OpcodeStore: begin
+            // handle WM bypass (we don't want to stall)
+            if (d_insn_rs2 == e_insn_rd && d_insn_rs1 != e_insn_rd) begin
+              loadStall = 1'b0;
+            end
+          end
+          OpcodeJal: begin
+            loadStall = 1'b0;
+          end
+          OpcodeJalr: begin
+            if (d_insn_rs1 != e_insn_rd) begin
+              loadStall = 1'b0;
+            end
+          end
+          OpcodeBranch: begin
+          end
+          OpcodeEnviron: begin
+            loadStall = 1'b0;
+          end
+          OpcodeMiscMem: begin
+            loadStall = 1'b0;
+          end
+          default: begin
+            loadStall = 1'b0;
+          end
+        endcase
+      end
+    end
+  end
+
+  logic fenceStall;
+
+  always_comb begin
+    fenceStall = 1'b0;
+    if ((execute_state.insn[6:0] == OpcodeStore && execute_state.cycle_status == CYCLE_NO_STALL) || (memory_state.insn[6:0] == OpcodeStore && memory_state.cycle_status == CYCLE_NO_STALL)) begin
+      if (decode_state_insn[6:0] == OpcodeMiscMem && (decode_state_insn[14:12] == 3'b000 || decode_state_insn[14:12] == 3'b001)) begin
+        fenceStall = 1'b1;
+      end
+    end
+  end
+
+  logic divStall;
+  always_comb begin
+    divStall = 1'b0;
+    if (execute_state.insn[6:0] == OpcodeRegReg && execute_state.insn[14:12] >= 4 && execute_state.insn[31:25] == 1 && execute_state.cycle_status == CYCLE_NO_STALL) begin
+      case (decode_state_insn[6:0])
+        OpcodeLui: begin
+        end
+        OpcodeAuipc: begin
+        end
+        OpcodeRegImm: begin
+          if (d_insn_rs1 == e_insn_rd) begin
+            divStall = 1'b1;
+          end
+        end
+        OpcodeRegReg: begin
+          if (d_insn_rs1 == e_insn_rd || d_insn_rs2 == e_insn_rd) begin
+            divStall = 1'b1;
+          end
+        end
+        OpcodeLoad: begin
+          if (d_insn_rs1 == e_insn_rd) begin
+            divStall = 1'b1;
+          end
+        end
+        OpcodeStore: begin
+          if (d_insn_rs1 == e_insn_rd || d_insn_rs2 == e_insn_rd) begin
+            divStall = 1'b1;
+          end
+        end
+        OpcodeJal: begin
+        end
+        OpcodeJalr: begin
+          if (d_insn_rs1 == e_insn_rd) begin
+            divStall = 1'b1;
+          end
+        end
+        OpcodeBranch: begin
+          if (d_insn_rs1 == e_insn_rd || d_insn_rs2 == e_insn_rd) begin
+            divStall = 1'b1;
+          end
+        end
+        OpcodeEnviron: begin
+        end
+        OpcodeMiscMem: begin
+        end
+        default: begin
+        end
+      endcase
+    end
+  end
+
+  // setup for register file write
+  always_comb begin
+    illegal_insn = 1'b0;
+    if (decode_state.cycle_status == CYCLE_NO_STALL) begin
+      case (d_insn_opcode)
+        OpcodeLui: begin
+        end
+        OpcodeRegImm: begin
+          case (decode_state_insn[14:12])
+            // addi
+            3'b000: begin
+            end
+            // slti
+            3'b010: begin
+            end
+            // sltiu
+            3'b011: begin
+            end
+            // xori
+            3'b100: begin
+            end
+            // ori
+            3'b110: begin
+            end
+            // andi
+            3'b111: begin
+            end
+            // slli
+            3'b001: begin
+            end
+            // srli & srai
+            3'b101: begin
+              if (decode_state_insn[31:25] == 7'd0) begin
+              end else
+              if (decode_state_insn[31:25] == 7'b0100000) begin
+              end else begin
+                illegal_insn = 1'b1;
+              end
+            end
+            default: begin
+              illegal_insn = 1'b1;
+            end
+          endcase
+        end
+        OpcodeRegReg: begin
+          case (decode_state_insn[14:12])
+            // add & sub & mul
+            3'b000: begin
+              // add
+              if (decode_state_insn[31:25] == 7'b0) begin
+                // sub
+              end else if (decode_state_insn[31:25] == 7'b0100000) begin
+                // mul
+              end else
+              if (decode_state_insn[31:25] == 7'd1) begin
+              end else begin
+                illegal_insn = 1'b1;
+              end
+            end
+            // sll & mulh
+            3'b001: begin
+              // sll
+              if (decode_state_insn[31:25] == 7'd0) begin
+              end  // mulh
+              else
+              if (decode_state_insn[31:25] == 7'd1) begin
+              end else begin
+                illegal_insn = 1'b1;
+              end
+            end
+            // slt & mulhsu
+            3'b010: begin
+              // slt
+              if (decode_state_insn[31:25] == 7'd0) begin
+              end  // mulhsu
+              else
+              if (decode_state_insn[31:25] == 7'd1) begin
+              end else begin
+                illegal_insn = 1'b1;
+              end
+            end
+            // sltu & mulhu
+            3'b011: begin
+              // sltu
+              if (decode_state_insn[31:25] == 7'd0) begin
+              end  // mulhu
+              else
+              if (decode_state_insn[31:25] == 7'd1) begin
+              end else begin
+                illegal_insn = 1'b1;
+              end
+            end
+            // xor
+            3'b100: begin
+              if (decode_state_insn[31:25] == 7'd0 || decode_state_insn[31:25] == 7'd1) begin
+              end else begin
+                illegal_insn = 1'b1;
+              end
+            end
+            // srl & sra
+            3'b101: begin
+              if (decode_state_insn[31:25] == 7'd0) begin
+              end else
+              if (decode_state_insn[31:25] == 7'b0100000) begin
+              end else
+              if (decode_state_insn[31:25] == 7'd1) begin
+              end else begin
+                illegal_insn = 1'b1;
+              end
+            end
+            // or
+            3'b110: begin
+              if (decode_state_insn[31:25] == 7'd0 || decode_state_insn[31:25] == 7'd1) begin
+              end else begin
+                illegal_insn = 1'b1;
+              end
+            end
+            // and
+            3'b111: begin
+              if (decode_state_insn[31:25] == 7'd0 || decode_state_insn[31:25] == 7'd1) begin
+              end else begin
+                illegal_insn = 1'b1;
+              end
+            end
+            default: begin
+              illegal_insn = 1'b1;
+            end
+          endcase
+        end
+        OpcodeBranch: begin
+          case (decode_state_insn[14:12])
+            // beq
+            3'b000: begin
+              if (e_bypass_rs1 == e_bypass_rs2) begin
+              end
+            end
+            // bne
+            3'b001: begin
+              if (e_bypass_rs1 != e_bypass_rs2) begin
+              end
+            end
+            // blt
+            3'b100: begin
+              if ($signed(e_bypass_rs1) < $signed(e_bypass_rs2)) begin
+              end
+            end
+            // bge
+            3'b101: begin
+              if ($signed(e_bypass_rs1) >= $signed(e_bypass_rs2)) begin
+              end
+            end
+            // bltu
+            3'b110: begin
+              if (e_bypass_rs1 < e_bypass_rs2) begin
+              end
+            end
+            // bgeu
+            3'b111: begin
+              if (e_bypass_rs1 >= e_bypass_rs2) begin
+              end
+            end
+            default: begin
+              illegal_insn = 1'b1;
+            end
+          endcase
+        end
+        OpcodeEnviron: begin
+          if (decode_state_insn[31:7] == 25'd0) begin
+          end else begin
+            illegal_insn = 1'b1;
+          end
+        end
+        OpcodeLoad: begin
+          case (decode_state_insn[14:12])
+            // lb
+            3'b000: begin
+            end
+            // lh
+            3'b001: begin
+            end
+            // lw
+            3'b010: begin
+            end
+            // lbu
+            3'b100: begin
+            end
+            // lhu
+            3'b101: begin
+            end
+            default: begin
+              illegal_insn = 1'b1;
+            end
+          endcase
+        end
+        OpcodeStore: begin
+          case (decode_state_insn[14:12])
+            // sb
+            3'b000: begin
+            end
+            // sh
+            3'b001: begin
+            end
+            // sw
+            3'b010: begin
+            end
+            default: begin
+              illegal_insn = 1'b1;
+            end
+          endcase
+        end
+        OpcodeMiscMem: begin
+          case (decode_state_insn[14:12])
+            3'b000: begin
+            end
+            3'b001: begin
+            end
+            default: begin
+              illegal_insn = 1'b1;
+            end
+          endcase
+        end
+        OpcodeAuipc: begin
+        end
+        OpcodeJal: begin
+        end
+        OpcodeJalr: begin
+          if (decode_state_insn[14:12] == 0) begin
+          end else begin
+            illegal_insn = 1'b1;
+          end
+        end
+        default: begin
+          illegal_insn = 1'b1;
+        end
+      endcase
+    end
+  end
+
+  /*****************/
+  /* EXECUTE STAGE */
+  /*****************/
+  stage_execute_t execute_state;
+  always_ff @(posedge clk) begin
+    if (rst) begin
+      execute_state <= '{pc: 0, insn: 0, cycle_status: CYCLE_RESET, rs1_data: 0, rs2_data: 0};
+    end else if (loadStall) begin
+      execute_state <= '{
+          pc: 0,
+          insn: 0,
+          cycle_status: CYCLE_LOAD2USE,
+          rs1_data: 0,
+          rs2_data: 0
+      };
+    end else if (fenceStall) begin
+      execute_state <= '{pc: 0, insn: 0, cycle_status: CYCLE_FENCEI, rs1_data: 0, rs2_data: 0};
+    end else if (divStall) begin
+      execute_state <= '{
+          pc: 0,
+          insn: 0,
+          cycle_status: CYCLE_DIV2USE,
+          rs1_data: 0,
+          rs2_data: 0
+      };
+    end else begin
+      execute_state <= '{
+          pc: branch_bool > 0 ? 0 : decode_state.pc,
+          insn: branch_bool > 0 ? 0 : decode_state_insn,
+          cycle_status:
+          illegal_insn
+          ?
+          CYCLE_INVALID
+          :
+          branch_bool
+          > 0 ?
+          CYCLE_TAKEN_BRANCH
+          :
+          decode_state.cycle_status,
+          rs1_data: wd_bypass_rs1,
+          rs2_data: wd_bypass_rs2
+      };
+    end
+  end
+  wire [255:0] e_disasm;
+  Disasm #(
+      .PREFIX("E")
+  ) disasm_1execute (
+      .insn  (execute_state.insn),
+      .disasm(e_disasm)
+  );
+
+  // components of the instruction
+  wire [6:0] e_insn_funct7;
+  wire [4:0] e_insn_rs2;
+  wire [4:0] e_insn_rs1;
+  wire [2:0] e_insn_funct3;
+  wire [4:0] e_insn_rd;
+  wire [`OPCODE_SIZE] e_insn_opcode;
+
+  // split R-type instruction - see section 2.2 of RiscV spec
+  assign {e_insn_funct7, e_insn_rs2, e_insn_rs1, e_insn_funct3, e_insn_rd, e_insn_opcode} = execute_state.insn;
+
+  // setup for I, S, B & J type instructions
+  // I - short immediates and loads
+  wire [11:0] e_imm_i;
+  assign e_imm_i = execute_state.insn[31:20];
+  wire [ 4:0] e_imm_shamt = execute_state.insn[24:20];
+
+  // S - stores
+  wire [11:0] e_imm_s;
+  assign e_imm_s[11:5] = e_insn_funct7, e_imm_s[4:0] = e_insn_rd;
+
+  // B - conditionals
+  wire [12:0] e_imm_b;
+  assign {e_imm_b[12], e_imm_b[10:5]} = e_insn_funct7,
+      {e_imm_b[4:1], e_imm_b[11]} = e_insn_rd,
+      e_imm_b[0] = 1'b0;
+
+  // J - unconditional jumps
+  wire [20:0] e_imm_j;
+  assign {e_imm_j[20], e_imm_j[10:1], e_imm_j[11], e_imm_j[19:12], e_imm_j[0]} = {
+    execute_state.insn[31:12], 1'b0
+  };
+
+  wire [`REG_SIZE] e_imm_i_sext = {{20{e_imm_i[11]}}, e_imm_i[11:0]};
+  wire [`REG_SIZE] e_imm_s_sext = {{20{e_imm_s[11]}}, e_imm_s[11:0]};
+  wire [`REG_SIZE] e_imm_b_sext = {{19{e_imm_b[12]}}, e_imm_b[12:0]};
+  wire [`REG_SIZE] e_imm_j_sext = {{11{e_imm_j[20]}}, e_imm_j[20:0]};
+
+  // result of ALU
+  logic [31:0] e_result;
+
+  logic [31:0] e_bypass_rs1;
+  logic [31:0] e_bypass_rs2;
+
+  logic [31:0] e_unsigned_bypass_rs1;
+  logic [31:0] e_unsigned_bypass_rs2;
+
+  // multiply
+  logic [63:0] product;
+
+  // branch
+  logic [31:0] branch_taken;
+  logic branch_bool;
+
+  // MX bypass logic
+  always_comb begin
+    e_bypass_rs1 = 0;
+    e_bypass_rs2 = 0;
+    e_unsigned_bypass_rs1 = 0;
+    e_unsigned_bypass_rs2 = 0;
+    if (execute_state.cycle_status == CYCLE_NO_STALL) begin
+      if ((e_insn_rs1 == m_insn_rd) && m_insn_rd != 0 && memory_state.cycle_status == CYCLE_NO_STALL && memory_state.insn[6:0] != OpcodeBranch && memory_state.insn[6:0] != OpcodeStore && memory_state.insn[6:0] != OpcodeLoad && memory_state.insn[6:0] != OpcodeEnviron && memory_state.insn[6:0] != OpcodeMiscMem
+      && execute_state.insn[6:0] != OpcodeLui && execute_state.insn[6:0] != OpcodeAuipc && execute_state.insn[6:0] != OpcodeJal && execute_state.insn[6:0] != OpcodeEnviron && execute_state.insn[6:0] != OpcodeMiscMem) begin
+        e_bypass_rs1 = memory_state.alu_result;
+        e_unsigned_bypass_rs1 = e_bypass_rs1[31] ? ~e_bypass_rs1 + 1 : e_bypass_rs1;
+      end else begin
+        // WX bypass logic
+        if ((e_insn_rs1 == w_insn_rd) && w_insn_rd != 0 && writeback_state.cycle_status == CYCLE_NO_STALL && writeback_state.insn[6:0] != OpcodeBranch && writeback_state.insn[6:0] != OpcodeStore && writeback_state.insn[6:0] != OpcodeEnviron && writeback_state.insn[6:0] != OpcodeMiscMem
+        && execute_state.insn[6:0] != OpcodeLui && execute_state.insn[6:0] != OpcodeAuipc && execute_state.insn[6:0] != OpcodeJal && execute_state.insn[6:0] != OpcodeEnviron && execute_state.insn[6:0] != OpcodeMiscMem) begin
+          e_bypass_rs1 = writebackBypassResult;
+          e_unsigned_bypass_rs1 = e_bypass_rs1[31] ? ~e_bypass_rs1 + 1 : e_bypass_rs1;
+        end else begin
+          e_bypass_rs1 = execute_state.rs1_data;
+          e_unsigned_bypass_rs1 = e_bypass_rs1[31] ? ~e_bypass_rs1 + 1 : e_bypass_rs1;
+        end
+      end
+
+      if ((e_insn_rs2 == m_insn_rd) && m_insn_rd != 0 && memory_state.cycle_status == CYCLE_NO_STALL && memory_state.insn[6:0] != OpcodeBranch && memory_state.insn[6:0] != OpcodeLoad && memory_state.insn[6:0] != OpcodeStore && memory_state.insn[6:0] != OpcodeEnviron && memory_state.insn[6:0] != OpcodeMiscMem
+      && (execute_state.insn[6:0] == OpcodeRegReg || execute_state.insn[6:0] == OpcodeBranch || execute_state.insn[6:0] == OpcodeStore)) begin
+        e_bypass_rs2 = memory_state.alu_result;
+        e_unsigned_bypass_rs2 = e_bypass_rs2[31] ? ~e_bypass_rs2 + 1 : e_bypass_rs2;
+      end else begin
+        // WX bypass logic
+        if ((e_insn_rs2 == w_insn_rd) && w_insn_rd != 0 && writeback_state.cycle_status == CYCLE_NO_STALL && writeback_state.insn[6:0] != OpcodeBranch && writeback_state.insn[6:0] != OpcodeStore && writeback_state.insn[6:0] != OpcodeEnviron && writeback_state.insn[6:0] != OpcodeMiscMem
+        && (execute_state.insn[6:0] == OpcodeRegReg || execute_state.insn[6:0] == OpcodeBranch || execute_state.insn[6:0] == OpcodeStore)) begin
+          e_bypass_rs2 = writebackBypassResult;
+          e_unsigned_bypass_rs2 = e_bypass_rs2[31] ? ~e_bypass_rs2 + 1 : e_bypass_rs2;
+        end else begin
+          e_bypass_rs2 = execute_state.rs2_data;
+          e_unsigned_bypass_rs2 = e_bypass_rs2[31] ? ~e_bypass_rs2 + 1 : e_bypass_rs2;
+        end
+      end
+    end
+  end
+
+  logic [31:0] remainder1, remainder2, remainder3, remainder4;
+  logic [31:0] quotient1, quotient2, quotient3, quotient4;
+
+  // divider / remainder
+  divider_unsigned_pipelined div (
+      .clk(clk),
+      .rst(rst),
+      .i_dividend(e_unsigned_bypass_rs1),
+      .i_divisor(e_unsigned_bypass_rs2),
+      .o_quotient(quotient1),
+      .o_remainder(remainder1)
+  );
+  divider_unsigned_pipelined divu (
+      .clk(clk),
+      .rst(rst),
+      .i_dividend(e_bypass_rs1),
+      .i_divisor(e_bypass_rs2),
+      .o_quotient(quotient2),
+      .o_remainder(remainder2)
+  );
+  divider_unsigned_pipelined rem (
+      .clk(clk),
+      .rst(rst),
+      .i_dividend(e_unsigned_bypass_rs1),
+      .i_divisor(e_unsigned_bypass_rs2),
+      .o_quotient(quotient3),
+      .o_remainder(remainder3)
+  );
+  divider_unsigned_pipelined remu (
+      .clk(clk),
+      .rst(rst),
+      .i_dividend(e_bypass_rs1),
+      .i_divisor(e_bypass_rs2),
+      .o_quotient(quotient4),
+      .o_remainder(remainder4)
+  );
+
+  always_comb begin
+    branch_bool = 0;
+    branch_taken = 0;
+    e_result = 0;
+    product = 0;
+    if (execute_state.cycle_status == CYCLE_NO_STALL) begin
+      case (e_insn_opcode)
+        OpcodeLui: begin
+          e_result = {execute_state.insn[31:12], 12'b0};
+        end
+        OpcodeRegImm: begin
+          case (execute_state.insn[14:12])
+            // addi
+            3'b000: begin
+              e_result = e_bypass_rs1 + e_imm_i_sext;
+            end
+            // slti
+            3'b010: begin
+              e_result = ($signed(e_bypass_rs1) < $signed(e_imm_i_sext)) ? 32'd1 : 32'd0;
+            end
+            // sltiu
+            3'b011: begin
+              e_result = (e_bypass_rs1 < e_imm_i_sext) ? 32'd1 : 32'd0;
+            end
+            // xori
+            3'b100: begin
+              e_result = e_bypass_rs1 ^ e_imm_i_sext;
+            end
+            // ori
+            3'b110: begin
+              e_result = e_bypass_rs1 | e_imm_i_sext;
+            end
+            // andi
+            3'b111: begin
+              e_result = e_bypass_rs1 & e_imm_i_sext;
+            end
+            // slli
+            3'b001: begin
+              e_result = e_bypass_rs1 << e_imm_shamt;
+            end
+            // srli & srai
+            3'b101: begin
+              if (execute_state.insn[31:25] == 7'd0) begin
+                e_result = e_bypass_rs1 >> e_imm_shamt;
+              end else if (execute_state.insn[31:25] == 7'b0100000) begin
+                e_result = $signed(e_bypass_rs1) >>> e_imm_shamt;
+              end
+            end
+            default: begin
+            end
+          endcase
+        end
+        OpcodeRegReg: begin
+          case (execute_state.insn[14:12])
+            // add & sub & mul
+            3'b000: begin
+              // add
+              if (execute_state.insn[31:25] == 7'b0) begin
+                e_result = e_bypass_rs1 + e_bypass_rs2;
+                // sub
+              end else if (execute_state.insn[31:25] == 7'b0100000) begin
+                e_result = e_bypass_rs1 - e_bypass_rs2;
+                // mul
+              end else if (execute_state.insn[31:25] == 7'd1) begin
+                product  = {{32{1'b0}}, e_bypass_rs1} * {{32{1'b0}}, e_bypass_rs2};
+                e_result = product[31:0];
+              end
+            end
+            // sll & mulh
+            3'b001: begin
+              // sll
+              if (execute_state.insn[31:25] == 7'd0) begin
+                e_result = e_bypass_rs1 << e_bypass_rs2[4:0];
+              end  // mulh
+              else if (execute_state.insn[31:25] == 7'd1) begin
+                product = $signed({{32{e_bypass_rs1[31]}}, e_bypass_rs1}) *
+                    $signed({{32{e_bypass_rs2[31]}}, e_bypass_rs2});
+                e_result = product[63:32];
+              end
+            end
+            // slt & mulhsu
+            3'b010: begin
+              // slt
+              if (execute_state.insn[31:25] == 7'd0) begin
+                e_result = ($signed(e_bypass_rs1) < $signed(e_bypass_rs2)) ? 32'd1 : 32'd0;
+              end  // mulhsu
+              else if (execute_state.insn[31:25] == 7'd1) begin
+                product = $signed({{32{e_bypass_rs1[31]}}, e_bypass_rs1}) *
+                    ({{32{1'b0}}, e_bypass_rs2});
+                e_result = product[63:32];
+              end
+            end
+            // sltu & mulhu
+            3'b011: begin
+              // sltu
+              if (execute_state.insn[31:25] == 7'd0) begin
+                e_result = (e_bypass_rs1 < e_bypass_rs2) ? 32'd1 : 32'd0;
+              end  // mulhu
+              else if (execute_state.insn[31:25] == 7'd1) begin
+                product  = ({{32{1'b0}}, e_bypass_rs1}) * ({{32{1'b0}}, e_bypass_rs2});
+                e_result = product[63:32];
+              end
+            end
+            // xor & div
+            3'b100: begin
+              // xor
+              if (execute_state.insn[31:25] == 7'd0) begin
+                e_result = e_bypass_rs1 ^ e_bypass_rs2;
+                // div
+              end else if (execute_state.insn[31:25] == 7'd1) begin
+                e_result = e_bypass_rs1;
+              end
+            end
+            // srl & sra
+            3'b101: begin
+              if (execute_state.insn[31:25] == 7'd0) begin
+                e_result = e_bypass_rs1 >> e_bypass_rs2[4:0];
+              end else if (execute_state.insn[31:25] == 7'b0100000) begin
+                e_result = $signed(e_bypass_rs1) >>> e_bypass_rs2[4:0];
+              end else if (execute_state.insn[31:25] == 7'd1) begin
+                e_result = e_bypass_rs1;
+              end
+            end
+            // or & rem
+            3'b110: begin
+              // or
+              if (execute_state.insn[31:25] == 7'd0) begin
+                e_result = e_bypass_rs1 | e_bypass_rs2;
+              end  // rem
+              else if (execute_state.insn[31:25] == 7'd1) begin
+                e_result = e_bypass_rs1;
+              end
+            end
+            // and & remu
+            3'b111: begin
+              // and
+              if (execute_state.insn[31:25] == 7'd0) begin
+                e_result = e_bypass_rs1 & e_bypass_rs2;
+              end  // remu
+              else if (execute_state.insn[31:25] == 7'd1) begin
+                e_result = e_bypass_rs1;
+              end
+            end
+            default: begin
+            end
+          endcase
+        end
+        OpcodeBranch: begin
+          case (execute_state.insn[14:12])
+            // beq
+            3'b000: begin
+              if (e_bypass_rs1 == e_bypass_rs2) begin
+                branch_bool  = 1;
+                branch_taken = execute_state.pc + e_imm_b_sext;
+              end
+            end
+            // bne
+            3'b001: begin
+              if (e_bypass_rs1 != e_bypass_rs2) begin
+                branch_bool  = 1;
+                branch_taken = execute_state.pc + e_imm_b_sext;
+              end
+            end
+            // blt
+            3'b100: begin
+              if ($signed(e_bypass_rs1) < $signed(e_bypass_rs2)) begin
+                branch_bool  = 1;
+                branch_taken = execute_state.pc + e_imm_b_sext;
+              end
+            end
+            // bge
+            3'b101: begin
+              if ($signed(e_bypass_rs1) >= $signed(e_bypass_rs2)) begin
+                branch_bool  = 1;
+                branch_taken = execute_state.pc + e_imm_b_sext;
+              end
+            end
+            // bltu
+            3'b110: begin
+              if (e_bypass_rs1 < e_bypass_rs2) begin
+                branch_bool  = 1;
+                branch_taken = execute_state.pc + e_imm_b_sext;
+              end
+            end
+            // bgeu
+            3'b111: begin
+              if (e_bypass_rs1 >= e_bypass_rs2) begin
+                branch_bool  = 1;
+                branch_taken = execute_state.pc + e_imm_b_sext;
+              end
+            end
+            default: begin
+            end
+          endcase
+        end
+        OpcodeLoad: begin
+          e_result = e_bypass_rs1 + e_imm_i_sext;
+        end
+        OpcodeStore: begin
+          e_result = e_bypass_rs1 + e_imm_s_sext;
+        end
+        OpcodeMiscMem: begin
+        end
+        OpcodeAuipc: begin
+          e_result = execute_state.pc + {execute_state.insn[31:12], 12'b0};
+        end
+        OpcodeJal: begin
+          e_result = execute_state.pc + 4;
+          branch_bool = 1;
+          branch_taken = execute_state.pc + e_imm_j_sext;
+        end
+        OpcodeJalr: begin
+          e_result = execute_state.pc + 4;
+          branch_bool = 1;
+          branch_taken = (e_bypass_rs1 + e_imm_i_sext) & ~(32'd1);
+        end
+        default: begin
+        end
+      endcase
+    end
+  end
+
+  /****************/
+  /* MEMORY STAGE */
+  /****************/
+  stage_memory_t memory_state;
+  always_ff @(posedge clk) begin
+    if (rst) begin
+      memory_state <= '{pc: 0, insn: 0, cycle_status: CYCLE_RESET, alu_result: 0, rs2_data: 0};
+    end else begin
+      begin
+        memory_state <= '{
+            pc: execute_state.pc,
+            insn: execute_state.insn,
+            cycle_status: execute_state.cycle_status,
+            alu_result: e_result,
+            // relevant for stores -> WM bypass
+            rs2_data:
+            e_bypass_rs2
+        };
+      end
+    end
+  end
+  wire [255:0] m_disasm;
+  Disasm #(
+      .PREFIX("M")
+  ) disasm_1memory (
+      .insn  (memory_state.insn),
+      .disasm(m_disasm)
+  );
+
+  // components of the instruction
+  wire [6:0] m_insn_funct7;
+  wire [4:0] m_insn_rs2;
+  wire [4:0] m_insn_rs1;
+  wire [2:0] m_insn_funct3;
+  wire [4:0] m_insn_rd;
+  wire [`OPCODE_SIZE] m_insn_opcode;
+
+  // split R-type instruction - see section 2.2 of RiscV spec
+  assign {m_insn_funct7, m_insn_rs2, m_insn_rs1, m_insn_funct3, m_insn_rd, m_insn_opcode} = memory_state.insn;
+
+  // setup for I, S, B & J type instructions
+  // I - short immediates and loads
+  wire [11:0] m_imm_i;
+  assign m_imm_i = memory_state.insn[31:20];
+  wire [ 4:0] m_imm_shamt = memory_state.insn[24:20];
+
+  // S - stores
+  wire [11:0] m_imm_s;
+  assign m_imm_s[11:5] = m_insn_funct7, m_imm_s[4:0] = m_insn_rd;
+
+  // B - conditionals
+  wire [12:0] m_imm_b;
+  assign {m_imm_b[12], m_imm_b[10:5]} = m_insn_funct7,
+      {m_imm_b[4:1], m_imm_b[11]} = m_insn_rd,
+      m_imm_b[0] = 1'b0;
+
+  // J - unconditional jumps
+  wire [20:0] m_imm_j;
+  assign {m_imm_j[20], m_imm_j[10:1], m_imm_j[11], m_imm_j[19:12], m_imm_j[0]} = {
+    memory_state.insn[31:12], 1'b0
+  };
+
+  wire [`REG_SIZE] m_imm_i_sext = {{20{m_imm_i[11]}}, m_imm_i[11:0]};
+  wire [`REG_SIZE] m_imm_s_sext = {{20{m_imm_s[11]}}, m_imm_s[11:0]};
+  wire [`REG_SIZE] m_imm_b_sext = {{19{m_imm_b[12]}}, m_imm_b[12:0]};
+  wire [`REG_SIZE] m_imm_j_sext = {{11{m_imm_j[20]}}, m_imm_j[20:0]};
+
+  // what we send to the writeback stage 
+  logic [31:0] memoryResult;
+
+  // bypass value
+  logic [31:0] rs2_bypass;
+  always_comb begin
+    rs2_bypass = memory_state.rs2_data;
+    if (writeback_state.cycle_status == CYCLE_NO_STALL && writeback_state.insn[6:0] == OpcodeLoad && memory_state.insn[6:0] == OpcodeStore &&
+    w_insn_rd == m_insn_rs2) begin
+      rs2_bypass = writebackBypassResult;
+    end
+  end
+
+  always_comb begin
+    memoryResult = memory_state.alu_result;
+    dmem.ARVALID = 0;
+    dmem.AWVALID = 0;
+    dmem.WVALID  = 0;
+    if (memory_state.cycle_status == CYCLE_NO_STALL) begin
+      case (memory_state.insn[6:0])
+        OpcodeLui: begin
+        end
+        OpcodeRegImm: begin
+        end
+        OpcodeRegReg: begin
+          case (memory_state.insn[14:12])
+            3'b100:
+            if (memory_state.insn[31:25] == 7'd1) begin
+              if (memory_state.rs2_data == 0) begin
+                memoryResult = ~(32'd0);
+              end else begin
+                if (memory_state.alu_result[31] != memory_state.rs2_data[31]) begin
+                  memoryResult = ~(quotient1) + 1;
+                end else begin
+                  if (memory_state.alu_result == 32'b10000000000000000000000000000000) begin
+                    if (memory_state.rs2_data == ~(32'd0)) begin
+                      memoryResult = memory_state.alu_result;
+                    end else begin
+                      memoryResult = quotient1;
+                    end
+                  end else begin
+                    memoryResult = quotient1;
+                  end
+                end
+              end
+            end
+            3'b101:
+            if (memory_state.insn[31:25] == 7'd1) begin
+              if (memory_state.rs2_data == 0) begin
+                memoryResult = ~(32'd0);
+              end else begin
+                memoryResult = quotient2;
+              end
+            end
+            3'b110:
+            if (memory_state.insn[31:25] == 7'd1) begin
+              if (memory_state.rs2_data == 0) begin
+                memoryResult = memory_state.alu_result;
+              end else begin
+                if (memory_state.alu_result[31] == 0 & memory_state.rs2_data[31] == 0) begin
+                  memoryResult = remainder3;
+                end else if (memory_state.alu_result[31] == 1 & memory_state.rs2_data[31] == 0) begin
+                  memoryResult = ~(remainder3) + 1;
+                end else if (memory_state.alu_result[31] == 0 & memory_state.rs2_data[31] == 1) begin
+                  memoryResult = remainder3;
+                end else begin
+                  if (memory_state.alu_result == 32'b10000000000000000000000000000000) begin
+                    if (memory_state.rs2_data == ~(32'd0)) begin
+                      memoryResult = 0;
+                    end else begin
+                      memoryResult = ~(remainder3) + 1;
+                    end
+                  end else begin
+                    memoryResult = ~(remainder3) + 1;
+                  end
+                end
+              end
+            end
+            3'b111:
+            if (memory_state.insn[31:25] == 7'd1) begin
+              if (memory_state.rs2_data == 0) begin
+                memoryResult = memory_state.alu_result;
+              end else begin
+                memoryResult = remainder4;
+              end
+            end
+            default: begin
+            end
+          endcase
+        end
+        OpcodeBranch: begin
+        end
+        OpcodeLoad: begin
+          case (memory_state.insn[14:12])
+            // lb
+            3'b000: begin
+              dmem.ARVALID = 1;
+              dmem.ARADDR  = (memory_state.alu_result & ~32'd3);
+              memoryResult = memory_state.alu_result;
+            end
+            // lh
+            3'b001: begin
+              if (memory_state.alu_result[0] == 1'b0) begin
+                dmem.ARVALID = 1;
+                dmem.ARADDR  = (memory_state.alu_result & ~32'd3);
+                memoryResult = memory_state.alu_result;
+              end
+            end
+            // lw
+            3'b010: begin
+              if (memory_state.alu_result[1:0] == 2'b00) begin
+                dmem.ARVALID = 1;
+                dmem.ARADDR  = memory_state.alu_result;
+                memoryResult = memory_state.alu_result;
+              end
+            end
+            // lbu
+            3'b100: begin
+              dmem.ARVALID = 1;
+              dmem.ARADDR  = (memory_state.alu_result & ~32'd3);
+              memoryResult = memory_state.alu_result;
+            end
+            // lhu
+            3'b101: begin
+              if (memory_state.alu_result[0] == 1'b0) begin
+                dmem.ARVALID = 1;
+                dmem.ARADDR  = (memory_state.alu_result & ~32'd3);
+                memoryResult = memory_state.alu_result;
+              end
+            end
+            default: begin
+            end
+          endcase
+        end
+        OpcodeStore: begin
+          case (memory_state.insn[14:12])
+            // sb
+            3'b000: begin
+              dmem.AWVALID = 1;
+              dmem.AWADDR  = (memory_state.alu_result & ~32'd3);
+              dmem.WVALID  = 1;
+              if (memory_state.alu_result[1:0] == 2'b00) begin
+                dmem.WSTRB = 4'b0001;
+                dmem.WDATA = {24'b0, rs2_bypass[7:0]};
+              end else if (memory_state.alu_result[1:0] == 2'b01) begin
+                dmem.WSTRB = 4'b0010;
+                dmem.WDATA = {16'b0, rs2_bypass[7:0], 8'b0};
+              end else if (memory_state.alu_result[1:0] == 2'b10) begin
+                dmem.WSTRB = 4'b0100;
+                dmem.WDATA = {8'b0, rs2_bypass[7:0], 16'b0};
+              end else begin
+                dmem.WSTRB = 4'b1000;
+                dmem.WDATA = {rs2_bypass[7:0], 24'b0};
+              end
+            end
+            3'b001: begin
+              if (memory_state.alu_result[0] == 1'b0) begin
+                dmem.AWVALID = 1;
+                dmem.WVALID  = 1;
+                dmem.AWADDR  = (memory_state.alu_result & ~32'd3);
+                if (memory_state.alu_result[1] == 1'b0) begin
+                  dmem.WSTRB = 4'b0011;
+                  dmem.WDATA = {16'b0, rs2_bypass[15:0]};
+                end else begin
+                  dmem.WSTRB = 4'b1100;
+                  dmem.WDATA = {rs2_bypass[15:0], 16'b0};
+                end
+              end
+            end
+            3'b010: begin
+              if (memory_state.alu_result[1:0] == 2'b00) begin
+                dmem.AWVALID = 1;
+                dmem.WVALID  = 1;
+                dmem.AWADDR  = memory_state.alu_result;
+                dmem.WSTRB   = 4'b1111;
+                dmem.WDATA   = rs2_bypass;
+              end
+            end
+            default: begin
+            end
+          endcase
+        end
+        OpcodeMiscMem: begin
+        end
+        OpcodeAuipc: begin
+        end
+        OpcodeJal: begin
+        end
+        OpcodeJalr: begin
+        end
+        default: begin
+        end
+      endcase
+    end
+  end
+
+
+  /*******************/
+  /* WRITEBACK STAGE */
+  /*******************/
+  stage_writeback_t writeback_state;
+  always_ff @(posedge clk) begin
+    if (rst) begin
+      writeback_state <= '{pc: 0, insn: 0, cycle_status: CYCLE_RESET, alu_result: 0};
+    end else begin
+      begin
+        writeback_state <= '{
+            pc:
+            memory_state.cycle_status
+            == (
+            CYCLE_TAKEN_BRANCH | CYCLE_DIV2USE | CYCLE_FENCEI | CYCLE_INVALID | CYCLE_LOAD2USE
+            ) ?
+            0
+            :
+            memory_state.pc,
+            insn:
+            memory_state.cycle_status
+            == (
+            CYCLE_TAKEN_BRANCH | CYCLE_DIV2USE | CYCLE_FENCEI | CYCLE_INVALID | CYCLE_LOAD2USE
+            ) ?
+            0
+            :
+            memory_state.insn,
+            cycle_status: memory_state.cycle_status,
+            alu_result: memoryResult
+        };
+      end
+    end
+  end
+  wire [255:0] w_disasm;
+  Disasm #(
+      .PREFIX("W")
+  ) disasm_1writeback (
+      .insn  (writeback_state.insn),
+      .disasm(w_disasm)
+  );
+
+  // components of the instruction
+  wire [6:0] w_insn_funct7;
+  wire [4:0] w_insn_rs2;
+  wire [4:0] w_insn_rs1;
+  wire [2:0] w_insn_funct3;
+  wire [4:0] w_insn_rd;
+  wire [`OPCODE_SIZE] w_insn_opcode;
+
+  // split R-type instruction - see section 2.2 of RiscV spec
+  assign {w_insn_funct7, w_insn_rs2, w_insn_rs1, w_insn_funct3, w_insn_rd, w_insn_opcode} = writeback_state.insn;
+
+  // setup for I, S, B & J type instructions
+  // I - short immediates and loads
+  wire [11:0] w_imm_i;
+  assign w_imm_i = writeback_state.insn[31:20];
+  wire [ 4:0] w_imm_shamt = writeback_state.insn[24:20];
+
+  // S - stores
+  wire [11:0] w_imm_s;
+  assign w_imm_s[11:5] = w_insn_funct7, w_imm_s[4:0] = w_insn_rd;
+
+  // B - conditionals
+  wire [12:0] w_imm_b;
+  assign {w_imm_b[12], w_imm_b[10:5]} = w_insn_funct7,
+      {w_imm_b[4:1], w_imm_b[11]} = w_insn_rd,
+      w_imm_b[0] = 1'b0;
+
+  // J - unconditional jumps
+  wire [20:0] w_imm_j;
+  assign {w_imm_j[20], w_imm_j[10:1], w_imm_j[11], w_imm_j[19:12], w_imm_j[0]} = {
+    writeback_state.insn[31:12], 1'b0
+  };
+
+  wire [`REG_SIZE] w_imm_i_sext = {{20{w_imm_i[11]}}, w_imm_i[11:0]};
+  wire [`REG_SIZE] w_imm_s_sext = {{20{w_imm_s[11]}}, w_imm_s[11:0]};
+  wire [`REG_SIZE] w_imm_b_sext = {{19{w_imm_b[12]}}, w_imm_b[12:0]};
+  wire [`REG_SIZE] w_imm_j_sext = {{11{w_imm_j[20]}}, w_imm_j[20:0]};
+
+  logic [31:0] loadResult;
+
+  logic [31:0] writebackBypassResult;
+
+  always_comb begin
+    writebackBypassResult = writeback_state.alu_result;
+    regfile_we = 1'b0;
+    halt = 1'b0;
+    regfile_rd_data = 0;
+    loadResult = 0;
+    if (writeback_state.cycle_status == CYCLE_NO_STALL) begin
+      case (w_insn_opcode)
+        OpcodeLui: begin
+          regfile_rd_data = writeback_state.alu_result;
+          regfile_we = 1;
+        end
+        OpcodeRegImm: begin
+          regfile_rd_data = writeback_state.alu_result;
+          regfile_we = 1;
+        end
+        OpcodeRegReg: begin
+          regfile_rd_data = writeback_state.alu_result;
+          regfile_we = 1;
+        end
+        OpcodeEnviron: begin
+          if (writeback_state.insn[31:7] == 25'd0) begin
+            halt = 1'b1;
+          end
+        end
+        OpcodeLoad: begin
+          case (writeback_state.insn[14:12])
+            // lb
+            3'b000: begin
+              if (dmem.RVALID == 1) begin
+                if (writeback_state.alu_result[1:0] == 2'b00) begin
+                  loadResult = ({{24{dmem.RDATA[7]}}, dmem.RDATA[7:0]});
+                end else if (writeback_state.alu_result[1:0] == 2'b01) begin
+                  loadResult = ({{24{dmem.RDATA[15]}}, dmem.RDATA[15:8]});
+                end else if (writeback_state.alu_result[1:0] == 2'b10) begin
+                  loadResult = ({{24{dmem.RDATA[23]}}, dmem.RDATA[23:16]});
+                end else begin
+                  loadResult = ({{24{dmem.RDATA[31]}}, dmem.RDATA[31:24]});
+                end
+              end
+            end
+            // lh
+            3'b001: begin
+              if (writeback_state.alu_result[0] == 1'b0) begin
+                if (writeback_state.alu_result[1] == 1'b0) begin
+                  loadResult = {{16{dmem.RDATA[15]}}, dmem.RDATA[15:0]};
+                end else begin
+                  loadResult = {{16{dmem.RDATA[31]}}, dmem.RDATA[31:16]};
+                end
+              end
+            end
+            // lw
+            3'b010: begin
+              if (writeback_state.alu_result[1:0] == 2'b00) begin
+                loadResult = dmem.RDATA;
+              end
+            end
+            // lbu
+            3'b100: begin
+              if (writeback_state.alu_result[1:0] == 2'b00) begin
+                loadResult = ({{24{1'b0}}, dmem.RDATA[7:0]});
+              end else if (writeback_state.alu_result[1:0] == 2'b01) begin
+                loadResult = ({{24{1'b0}}, dmem.RDATA[15:8]});
+              end else if (writeback_state.alu_result[1:0] == 2'b10) begin
+                loadResult = ({{24{1'b0}}, dmem.RDATA[23:16]});
+              end else begin
+                loadResult = ({{24{1'b0}}, dmem.RDATA[31:24]});
+              end
+            end
+            // lhu
+            3'b101: begin
+              if (writeback_state.alu_result[0] == 1'b0) begin
+                if (writeback_state.alu_result[1] == 1'b0) begin
+                  loadResult = {{16{1'b0}}, dmem.RDATA[15:0]};
+                end else begin
+                  loadResult = {{16{1'b0}}, dmem.RDATA[31:16]};
+                end
+              end
+            end
+            default: begin
+            end
+          endcase
+          writebackBypassResult = loadResult;
+          regfile_rd_data = loadResult;
+          regfile_we = 1;
+        end
+        OpcodeStore: begin
+        end
+        OpcodeMiscMem: begin
+        end
+        OpcodeAuipc: begin
+          regfile_rd_data = writeback_state.alu_result;
+          regfile_we = 1;
+        end
+        OpcodeJal: begin
+          regfile_rd_data = writeback_state.alu_result;
+          regfile_we = 1;
+        end
+        OpcodeJalr: begin
+          regfile_rd_data = writeback_state.alu_result;
+          regfile_we = 1;
+        end
+        OpcodeBranch: begin
+        end
+        default: begin
+        end
+      endcase
+    end
+  end
+
+  assign trace_writeback_pc = writeback_state.pc;
+  assign trace_writeback_insn = writeback_state.insn;
+  assign trace_writeback_cycle_status = writeback_state.cycle_status;
 
 endmodule
 
@@ -414,13 +1934,18 @@ module RiscvProcessor (
   );
 
   // HW6 memory interface
-  axi_clkrst_if axi_cr (.ACLK(clk), .ARESETn(~rst));
+  axi_clkrst_if axi_cr (
+      .ACLK(clk),
+      .ARESETn(~rst)
+  );
   axi_if axi_data ();
   axi_if axi_insn ();
-  MemoryAxiLite #(.NUM_WORDS(8192)) mem (
-    .axi(axi_cr),
-    .insn(axi_insn.subord),
-    .data(axi_data.subord)
+  MemoryAxiLite #(
+      .NUM_WORDS(8192)
+  ) mem (
+      .axi (axi_cr),
+      .insn(axi_insn.subord),
+      .data(axi_data.subord)
   );
 
   DatapathAxilMemory datapath (
