@@ -187,7 +187,7 @@ module MemoryAxiLite #(
       end
 
       if (!data.ARVALID && data.RVALID) begin
-        insn.RVALID <= 0;
+        data.RVALID <= 0;
       end
 
       // WRITES
@@ -1839,7 +1839,7 @@ module DatapathAxilMemory (
             end
             // lhu
             3'b101: begin
-              if (memory_state.alu_result[0] == 1'b0) begin
+              if (writeback_state.alu_result[0] == 1'b0) begin
                 if (writeback_state.alu_result[1] == 1'b0) begin
                   loadResult = {{16{1'b0}}, dmem.RDATA[15:0]};
                 end else begin
