@@ -354,7 +354,7 @@ typedef enum {
 /** state at the start of Decode stage */
 typedef struct packed {
   logic [`REG_SIZE] pc;
-  // logic [`INSN_SIZE] insn;
+  logic [`INSN_SIZE] insn;
   cycle_status_e cycle_status;
 } stage_decode_t;
 
@@ -504,58 +504,45 @@ module DatapathAxilMemory (
       branch_bubble <= 0;
     end
     if (rst) begin
-      decode_state <= '{
-          pc: 0,
-          // insn: 0, 
-          cycle_status:
-          CYCLE_RESET
-      };
+      decode_state <= '{pc: 0, insn: 0, cycle_status: CYCLE_RESET};
     end else if (loadStall) begin
       decode_state <= '{
           pc: decode_state.pc,
-          // insn: decode_state_insn,
-          cycle_status:
-          decode_state.cycle_status
+          insn: decode_state_insn,
+          cycle_status: decode_state.cycle_status
       };
     end else if (fenceStall) begin
       decode_state <= '{
           pc: decode_state.pc,
-          // insn: decode_state_insn,
-          cycle_status:
-          decode_state.cycle_status
+          insn: decode_state_insn,
+          cycle_status: decode_state.cycle_status
       };
     end else if (divStall) begin
       decode_state <= '{
           pc: decode_state.pc,
-          // insn: decode_state_insn,
-          cycle_status:
-          decode_state.cycle_status
+          insn: decode_state_insn,
+          cycle_status: decode_state.cycle_status
       };
     end else begin
       decode_state <= '{
           pc: branch_bool > 0 ? 0 : f_pc_current,
-          // insn: branch_bool > 0 ? 0 : imem.RVALID ? imem.RDATA : 0,
-          cycle_status:
-          branch_bool
-          > 0 ?
-          CYCLE_TAKEN_BRANCH
-          :
-          f_cycle_status
+          insn: branch_bool > 0 ? 0 : imem.RVALID ? imem.RDATA : 0,
+          cycle_status: branch_bool > 0 ? CYCLE_TAKEN_BRANCH : f_cycle_status
       };
     end
   end
 
-  logic [31:0] decode_state_insn;
+  logic [ 31:0] decode_state_insn = decode_state.insn;
   // Handle AXIL
-  always_comb begin
-    if (imem.RVALID && !branch_bubble) begin
-      decode_state_insn = imem.RDATA;
-    end else begin
-      decode_state_insn = 0;
-    end
-  end
+  // always_comb begin
+  //   if (imem.RVALID && !branch_bubble) begin
+  //     decode_state_insn = imem.RDATA;
+  //   end else begin
+  //     decode_state_insn = 0;
+  //   end
+  // end
 
-  wire [255:0] d_disasm;
+  wire  [255:0] d_disasm;
   Disasm #(
       .PREFIX("C")
   ) disasm_1decode (
