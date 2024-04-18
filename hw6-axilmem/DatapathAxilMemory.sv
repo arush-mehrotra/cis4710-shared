@@ -123,7 +123,6 @@ endinterface
 
 module MemoryAxiLite #(
     parameter int NUM_WORDS  = 32,
-    // parameter int ADDR_WIDTH = 32,
     parameter int DATA_WIDTH = 32
 ) (
     axi_clkrst_if axi,
@@ -388,19 +387,7 @@ typedef struct packed {
 module DatapathAxilMemory (
     input wire clk,
     input wire rst,
-
-    // Start by replacing this interface to imem...
-    // output logic [`REG_SIZE] pc_to_imem,
-    // input wire [`INSN_SIZE] insn_from_imem,
-    // ...with this AXIL one.
     axi_if.manager imem,
-
-    // Once imem is working, replace this interface to dmem...
-    // output logic [`REG_SIZE] addr_to_dmem,
-    // input wire [`REG_SIZE] load_data_from_dmem,
-    // output logic [`REG_SIZE] store_data_to_dmem,
-    // output logic [3:0] store_we_to_dmem,
-    // ...with this AXIL one
     axi_if.manager dmem,
 
     output logic halt,
@@ -470,10 +457,6 @@ module DatapathAxilMemory (
     end
   end
 
-  // send PC to imem
-  // assign pc_to_imem = f_pc_current;
-  // assign f_insn = insn_from_imem;
-
   // USE AXIL
   always_comb begin
     imem.ARVALID = 1;
@@ -510,36 +493,15 @@ module DatapathAxilMemory (
     if (rst) begin
       decode_state <= '{pc: 0, cycle_status: CYCLE_RESET};
     end else if (loadStall) begin
-      decode_state <= '{
-          pc: decode_state.pc,
-          // insn: decode_state_insn,
-          cycle_status:
-          decode_state.cycle_status
-      };
+      decode_state <= '{pc: decode_state.pc, cycle_status: decode_state.cycle_status};
     end else if (fenceStall) begin
-      decode_state <= '{
-          pc: decode_state.pc,
-          // insn: decode_state_insn,
-          cycle_status:
-          decode_state.cycle_status
-      };
+      decode_state <= '{pc: decode_state.pc, cycle_status: decode_state.cycle_status};
     end else if (divStall) begin
-      decode_state <= '{
-          pc: decode_state.pc,
-          // insn: decode_state_insn,
-          cycle_status:
-          decode_state.cycle_status
-      };
+      decode_state <= '{pc: decode_state.pc, cycle_status: decode_state.cycle_status};
     end else begin
       decode_state <= '{
           pc: branch_bool > 0 ? 0 : f_pc_current,
-          // insn: branch_bool > 0 ? 0 : imem.RVALID ? imem.RDATA : 0,
-          cycle_status:
-          branch_bool
-          > 0 ?
-          CYCLE_TAKEN_BRANCH
-          :
-          f_cycle_status
+          cycle_status: branch_bool > 0 ? CYCLE_TAKEN_BRANCH : f_cycle_status
       };
     end
   end
@@ -766,7 +728,6 @@ module DatapathAxilMemory (
   // setup for register file write
   always_comb begin
     illegal_insn = 1'b0;
-    // halt = 1'b0;
     if (decode_state.cycle_status == CYCLE_NO_STALL) begin
       case (d_insn_opcode)
         OpcodeLui: begin
@@ -1478,18 +1439,6 @@ module DatapathAxilMemory (
   // what we send to the writeback stage 
   logic [31:0] memoryResult;
 
-  // memory we sent to dmem
-  // logic [31:0] tempAddr;
-  // assign addr_to_dmem = tempAddr;
-
-  // write enable for dmem
-  // logic [3:0] tempWe;
-  // assign store_we_to_dmem = tempWe;
-
-  // value we store in dmem
-  // logic [31:0] tempStore;
-  // assign store_data_to_dmem = tempStore;
-
   // bypass value
   logic [31:0] rs2_bypass;
   always_comb begin
@@ -1502,8 +1451,6 @@ module DatapathAxilMemory (
 
   always_comb begin
     memoryResult = memory_state.alu_result;
-    // tempAddr = 32'b0;
-    // tempWe = 4'b0000;
     dmem.ARVALID = 0;
     dmem.AWVALID = 0;
     dmem.WVALID  = 0;
@@ -2006,10 +1953,6 @@ module RiscvProcessor (
       .rst(rst),
       .imem(axi_insn.manager),
       .dmem(axi_data.manager),
-      // .addr_to_dmem(mem_data_addr),
-      // .store_data_to_dmem(mem_data_to_write),
-      // .store_we_to_dmem(mem_data_we),
-      // .load_data_from_dmem(mem_data_loaded_value),
       .halt(halt),
       .trace_writeback_pc(trace_writeback_pc),
       .trace_writeback_insn(trace_writeback_insn),
